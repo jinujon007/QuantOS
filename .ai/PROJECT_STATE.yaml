@@ -1,0 +1,67 @@
+# Machine-readable current state. Actively maintained only — no history.
+# Update at the close of every work package. See README.md for precedence rule:
+# repository evidence (code, tests, CI, git log, docs/) overrides this file.
+
+project: QuantOS
+description: Institutional-grade automated trading platform for the Indian equity market
+status: active_development
+solo_operator: true
+
+architecture_status: frozen
+constitution_status: frozen
+roadmap_status: frozen  # Phases 0-9, per Blueprint
+
+current_phase:
+  number: 1
+  name: quantos-core skeleton
+  scope: extract config, storage, utils(logging) into quantos_core; zero change to the six frozen scripts' behavior
+  code_status: not_started  # quantos_core/{config,storage,utils}/ are still empty __init__.py stubs; WP-001 added typing/test scaffolding only, no logic
+  foundation_status: complete  # WP-001: strict mypy + import smoke test now gate quantos_core in CI
+  work_package_filed: false    # next WP (config/storage/utils extraction) not yet opened
+
+last_completed_work_package:
+  id: WP-001
+  name: Repository Foundation
+  date: "2026-07-13"
+  phase: 1
+
+ci_gates:
+  legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
+  quantos_core_mypy_strict: blocking         # WP-001
+  quantos_core_import_smoke_test: blocking   # WP-001
+  import_boundary_enforcement: not_yet_added # reserved as WP-005
+
+reserved_work_packages:
+  - id: WP-005
+    name: Architectural Import Boundary Enforcement
+    status: reserved_not_specified
+
+governing_documents:
+  constitution: 'docs/00_governance/(AI) QuantOS Constitution.md'
+  blueprint: 'docs/02_architecture/(AI) QuantOS Target Architecture Blueprint - 2026-07-13.html'
+  independent_audit: 'docs/01_audits/(AI) QuantOS Independent Audit - 2026-07-13.html'
+  external_due_diligence: 'docs/01_audits/(AI) QuantOS External Repository Due Diligence - 2026-07-13.html'
+  oss_adoption_review: 'docs/01_audits/(AI) QuantOS OSS Adoption Review - 2026-07-13.html'
+  adrs_dir: 'docs/adr/'
+  risk_register: 'docs/00_governance/Risk Register.md'
+  tech_debt_register: 'docs/00_governance/Technical Debt Register.md'
+
+metrics:
+  digital_readiness_score: "53/100"  # Independent Audit, 2026-07-13, institutional bar
+  test_coverage_pct: 25              # Phase 0 baseline (TD-008)
+
+open_items:
+  risks_total: 5
+  risks_mitigated: 1
+  tech_debt_total: 10
+  tech_debt_resolved: 1
+
+repository:
+  default_branch: main
+  license: proprietary-all-rights-reserved
+  remote: https://github.com/jinujon007/QuantOS
+  visibility: private
+
+modules_scaffolded_empty: 15  # quantos_core subpackages, zero logic (WP-000)
+
+last_updated: "2026-07-13"

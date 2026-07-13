@@ -31,6 +31,12 @@ jobs:
         # exists and is typed from day one.
         run: mypy download_data.py factor_attribution.py fetch_universe.py momentum_backtest.py paper_trader.py transaction_costs.py || true
 
+      - name: mypy --strict (quantos_core)
+        # Blocking, no exceptions (WP-001): quantos_core is typed from
+        # day one per the Constitution. Separate step from the legacy
+        # one above -- that one stays informational by design.
+        run: mypy --strict -p quantos_core
+
       - name: pytest (offline subset) with coverage
         run: |
           coverage run -m pytest -m "not network"

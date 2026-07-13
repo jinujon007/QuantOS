@@ -2,7 +2,7 @@
 type: register
 date: 2026-07-13
 status: active
-updated_by: WP-000 Repository Organization
+updated_by: WP-001 Repository Foundation
 ---
 
 # Technical Debt Register
@@ -21,7 +21,8 @@ them, never deleted from history (mark `Resolved`, keep the row).
 | TD-006 | 7 pre-existing mypy errors in `momentum_backtest.py`/`paper_trader.py` (Optional-handling in `walk_forward_test`; `--selftest`'s monkeypatch pattern reads as `attr-defined` to the type checker) | Low | No runtime impact — code is correct, type checker just can't see it | Phase 0 | Phase 1 — resolved naturally once `strategies`/`paper` modules are typed from day one; not worth annotating legacy scripts for | Small, deferred |
 | TD-007 | No GitHub remote configured — `.github/workflows/ci.yml` has never run in a real CI runner, only validated by running each step locally | Medium | CI config could have an environment-specific bug (e.g. `ubuntu-latest` path/line-ending differences vs this Windows dev machine) that local validation can't catch | Phase 0 | First push to a real remote — operator decision, not an engineering one | None (waiting on a decision, not effort) |
 | TD-008 | Coverage is 25% overall — by design (TD-002/TD-003 explain the 0%-coverage files), no enforced floor yet | Low | Not a regression risk today; becomes one if new code is added without tests and coverage silently drifts lower | Phase 0 | Phase 1, once `quantos_core`'s real test pyramid exists and a floor makes sense to enforce | Policy decision, ~0 effort |
-| TD-009 | Blueprint §3's literal repository tree omits two modules (`research`, `api`) that its own §5 module specs require | Low | Would have caused ambiguity again the next time someone scaffolds these modules from the Blueprint alone | This work package (WP-000), while resolving the chat-tree/Blueprint conflict | Resolved — placement decided in ADR-031 | Done |
+| TD-009 | Blueprint §3's literal repository tree omits two modules (`research`, `api`) that its own §5 module specs require | Low | Would have caused ambiguity again the next time someone scaffolds these modules from the Blueprint alone | WP-000, while resolving the chat-tree/Blueprint conflict | Resolved — placement decided in ADR-031 | Done |
+| TD-010 | Import-boundary enforcement (Constitution Part II item 4; ADR-029 leaf enforcement for `experiments`/`tools`) is not mechanically enforced anywhere — no import-linter or equivalent exists | Low today (zero real code in `quantos_core` to violate a boundary) | Rises to Medium the moment WP-002+ lands real module code with nothing checking dependency direction | WP-001 (scoped out per Technical Review Board direction — Constitution/ADR requirement confirmed unmet, tooling explicitly deferred, not silently dropped) | Reserved as **WP-005 — Architectural Import Boundary Enforcement**, to be specified once `quantos_core` contains real implementation | Not yet estimated — WP-005 unspecified |
 
 ## Severity definitions
 

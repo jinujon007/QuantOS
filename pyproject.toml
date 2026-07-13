@@ -68,6 +68,14 @@ ignore_missing_imports = true
 # Phase 1 migration decision, not a Phase 0 one.
 check_untyped_defs = true
 
+# quantos_core is typed from day one (Constitution Part III, Typing:
+# "mypy --strict on all of quantos_core. Not advisory — a CI-blocking
+# gate."). Scoped here rather than repo-wide because the six frozen
+# scripts above are explicitly not being touched to satisfy it (WP-001).
+[[tool.mypy.overrides]]
+module = "quantos_core.*"
+strict = true
+
 # ── pytest ────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]
