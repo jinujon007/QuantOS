@@ -1,0 +1,8 @@
+# Normalize line endings to LF in the repository regardless of platform
+# checkout settings — prevents CRLF/LF churn from masquerading as a real
+# behavioural diff in future golden-file / characterization-test reviews.
+* text=auto eol=lf
+
+# Data fixtures are exact byte content, not text to normalize
+*.csv -text
+*.json -text

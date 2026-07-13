@@ -1,0 +1,761 @@
+<title>QuantOS — Target Architecture Blueprint</title>
+<style>
+:root{
+  --bg:#f6f4ef; --surface:#ffffff; --surface-2:#efece4;
+  --ink:#1b1a17; --ink-2:#55534c; --muted:#86837a;
+  --border:rgba(27,26,23,0.12); --border-strong:rgba(27,26,23,0.22);
+  --accent:#a3691f; --accent-weak:rgba(163,105,31,0.12); --accent-weak-2:rgba(163,105,31,0.28);
+  --good:#0ca30c; --warning:#c98500; --serious:#ec835a; --critical:#d03b3b;
+  --l1:#2a4f6b; --l2:#4a3aa7;
+  --shadow: 0 1px 2px rgba(27,26,23,0.06), 0 8px 24px -12px rgba(27,26,23,0.18);
+  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#100f0d; --surface:#171613; --surface-2:#1e1c19; --ink:#f2efe8; --ink-2:#c7c3b7; --muted:#8b877c;
+    --border:rgba(242,239,232,0.12); --border-strong:rgba(242,239,232,0.22);
+    --accent:#e3a55c; --accent-weak:rgba(227,165,92,0.14); --accent-weak-2:rgba(227,165,92,0.32);
+    --good:#3fc23f; --warning:#fab219; --serious:#ff9d75; --critical:#ff6b6b; --l1:#7ba7cc; --l2:#9085e9;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5); }
+}
+:root[data-theme="dark"]{ --bg:#100f0d; --surface:#171613; --surface-2:#1e1c19; --ink:#f2efe8; --ink-2:#c7c3b7; --muted:#8b877c;
+  --border:rgba(242,239,232,0.12); --border-strong:rgba(242,239,232,0.22);
+  --accent:#e3a55c; --accent-weak:rgba(227,165,92,0.14); --accent-weak-2:rgba(227,165,92,0.32);
+  --good:#3fc23f; --warning:#fab219; --serious:#ff9d75; --critical:#ff6b6b; --l1:#7ba7cc; --l2:#9085e9;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5); }
+:root[data-theme="light"]{ --bg:#f6f4ef; --surface:#ffffff; --surface-2:#efece4; --ink:#1b1a17; --ink-2:#55534c; --muted:#86837a;
+  --border:rgba(27,26,23,0.12); --border-strong:rgba(27,26,23,0.22);
+  --accent:#a3691f; --accent-weak:rgba(163,105,31,0.12); --accent-weak-2:rgba(163,105,31,0.28);
+  --good:#0ca30c; --warning:#c98500; --serious:#ec835a; --critical:#d03b3b; --l1:#2a4f6b; --l2:#4a3aa7;
+  --shadow: 0 1px 2px rgba(27,26,23,0.06), 0 8px 24px -12px rgba(27,26,23,0.18); }
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;} }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15.5px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+::selection{ background:var(--accent-weak-2); }
+
+.shell{ display:grid; grid-template-columns:260px minmax(0,1fr); min-height:100vh; }
+@media (max-width:960px){ .shell{ grid-template-columns:1fr; } .toc{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--border); } }
+.toc{ position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto; padding:28px 18px 40px; border-right:1px solid var(--border); background:var(--surface); }
+.toc-brand{ font-family:var(--serif); font-size:1.02rem; letter-spacing:0.01em; margin:0 0 2px; }
+.toc-brand small{ display:block; font-family:var(--mono); font-size:0.68rem; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; margin-top:4px; }
+.toc hr{ border:none; border-top:1px solid var(--border); margin:16px 0; }
+.toc ol{ list-style:none; margin:0; padding:0; counter-reset:sec; }
+.toc li{ counter-increment:sec; }
+.toc a{ display:flex; gap:10px; align-items:baseline; text-decoration:none; color:var(--ink-2); font-size:0.82rem; padding:6px 8px; border-radius:5px; line-height:1.35; }
+.toc a::before{ content: counter(sec, decimal-leading-zero); font-family:var(--mono); font-size:0.7rem; color:var(--muted); flex:0 0 auto; }
+.toc a:hover, .toc a:focus-visible{ background:var(--accent-weak); color:var(--ink); }
+.toc a.active{ background:var(--accent-weak-2); color:var(--ink); font-weight:600; }
+.toc a:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+main{ padding:0; min-width:0; }
+.hero{ padding:44px clamp(20px,4vw,56px) 30px; border-bottom:1px solid var(--border);
+  background: radial-gradient(1200px 420px at 85% -10%, var(--accent-weak), transparent 60%), var(--surface); }
+.hero-eyebrow{ font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem; color:var(--accent); margin:0 0 10px; }
+.hero h1{ font-family:var(--serif); font-weight:600; font-size:clamp(1.5rem,2.8vw,2.15rem); margin:0 0 10px; text-wrap:balance; }
+.hero p.lead{ max-width:70ch; color:var(--ink-2); font-size:1.02rem; margin:0 0 22px; }
+
+.flow-strip{ display:flex; flex-wrap:wrap; gap:0; align-items:stretch; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); box-shadow:var(--shadow); }
+.flow-step{ flex:1 1 auto; min-width:110px; padding:10px 12px; font-size:0.74rem; text-align:center; border-right:1px solid var(--border); position:relative; }
+.flow-step:last-child{ border-right:none; }
+.flow-step .n{ font-family:var(--mono); color:var(--accent); font-size:0.65rem; display:block; margin-bottom:2px; }
+.flow-step:nth-child(even){ background:var(--surface-2); }
+
+section{ padding:38px clamp(20px,4vw,56px); border-bottom:1px solid var(--border); max-width:1040px; }
+section:last-of-type{ border-bottom:none; }
+.sec-num{ font-family:var(--mono); color:var(--accent); font-size:0.78rem; letter-spacing:0.08em; }
+h2{ font-family:var(--serif); font-weight:600; font-size:1.5rem; margin:2px 0 18px; text-wrap:balance; }
+h3{ font-family:var(--serif); font-weight:600; font-size:1.1rem; margin:24px 0 10px; }
+h4{ font-family:var(--sans); font-weight:700; font-size:0.88rem; margin:16px 0 6px; }
+p{ margin:0 0 14px; max-width:74ch; }
+p.muted{ color:var(--ink-2); font-size:0.94rem; }
+ul,ol.plain{ margin:0 0 14px; padding-left:1.3em; }
+li{ margin-bottom:6px; }
+strong{ font-weight:650; }
+code{ font-family:var(--mono); font-size:0.87em; background:var(--surface-2); padding:0.1em 0.4em; border-radius:4px; border:1px solid var(--border); }
+pre{ font-family:var(--mono); font-size:0.82rem; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:14px 16px; overflow-x:auto; line-height:1.55; }
+
+.callout{ border:1px solid var(--border-strong); border-left:3px solid var(--accent); background:var(--surface-2); border-radius:0 8px 8px 0; padding:14px 18px; margin:16px 0; font-size:0.93rem; color:var(--ink-2); }
+.callout strong{ color:var(--ink); }
+.callout.crit{ border-left-color:var(--critical); }
+
+.table-wrap{ overflow-x:auto; margin:8px 0 20px; border:1px solid var(--border); border-radius:10px; background:var(--surface); box-shadow:var(--shadow); }
+table{ border-collapse:collapse; width:100%; min-width:520px; font-size:0.86rem; }
+th,td{ text-align:left; padding:9px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
+thead th{ font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); background:var(--surface-2); position:sticky; top:0; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--accent-weak); }
+td.num{ font-variant-numeric:tabular-nums; font-family:var(--mono); font-size:0.84rem; }
+
+.chip{ display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+.chip::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.chip.acc{ color:var(--accent); background:var(--accent-weak); }
+.chip.good{ color:var(--good); background:color-mix(in srgb, var(--good) 14%, transparent); }
+.chip.crit{ color:var(--critical); background:color-mix(in srgb, var(--critical) 14%, transparent); }
+.chip.l1{ color:var(--l1); background:color-mix(in srgb, var(--l1) 14%, transparent); }
+.chip.l2{ color:var(--l2); background:color-mix(in srgb, var(--l2) 14%, transparent); }
+
+/* layered architecture diagram */
+.layers{ display:flex; flex-direction:column; gap:6px; margin:16px 0 22px; }
+.layer{ border:1px solid var(--border); border-radius:10px; padding:12px 16px; background:var(--surface); }
+.layer .lname{ font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:8px; }
+.layer .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.layer.core{ background:var(--accent-weak); border-color:var(--accent-weak-2); }
+.arrow-note{ text-align:center; font-family:var(--mono); font-size:0.7rem; color:var(--muted); padding:2px 0; }
+
+/* module spec accordion */
+.mod-list{ display:flex; flex-direction:column; gap:10px; margin:16px 0 24px; }
+details.mod{ border:1px solid var(--border); border-radius:10px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden; }
+details.mod > summary{ list-style:none; cursor:pointer; padding:13px 18px; display:flex; align-items:center; gap:12px; font-weight:650; }
+details.mod > summary::-webkit-details-marker{ display:none; }
+details.mod > summary::before{ content:"+"; font-family:var(--mono); color:var(--accent); font-weight:700; width:1em; }
+details.mod[open] > summary::before{ content:"\2212"; }
+details.mod > summary .modname{ font-family:var(--mono); color:var(--ink); }
+details.mod > summary .modnum{ font-family:var(--mono); font-size:0.72rem; color:var(--muted); }
+details.mod > summary .modpurpose{ font-weight:400; color:var(--ink-2); font-size:0.86rem; flex:1; }
+.mod-body{ padding:4px 18px 18px; border-top:1px solid var(--border); }
+.mod-body dl{ display:grid; grid-template-columns:130px 1fr; gap:0; margin:14px 0 0; font-size:0.87rem; }
+.mod-body dt{ font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); padding:8px 10px 8px 0; border-top:1px solid var(--border); }
+.mod-body dd{ margin:0; padding:8px 0; border-top:1px solid var(--border); color:var(--ink); }
+.mod-body dl > dt:first-of-type, .mod-body dl > dd:first-of-type{ border-top:none; }
+.mod-body .why{ background:var(--accent-weak); border-radius:0 8px 8px 0; border-left:3px solid var(--accent); padding:10px 14px; margin:12px 0 0; font-size:0.87rem; color:var(--ink-2); }
+.mod-body .why strong{ color:var(--ink); }
+
+/* phase timeline */
+.crit-path{ list-style:none; margin:10px 0 20px; padding:0; counter-reset:cp; }
+.crit-path li{ counter-increment:cp; position:relative; padding:14px 0 20px 34px; border-left:2px solid var(--border-strong); margin-left:9px; }
+.crit-path li::before{ content: counter(cp); position:absolute; left:-11px; top:12px; width:20px; height:20px; border-radius:50%; background:var(--surface); border:2px solid var(--accent); color:var(--accent); font-family:var(--mono); font-size:0.68rem; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.crit-path li:last-child{ border-left-color:transparent; }
+.crit-path .t{ font-weight:650; margin-bottom:3px; }
+.crit-path .tag{ font-family:var(--mono); font-size:0.68rem; color:var(--accent); margin-left:8px; font-weight:600; }
+.crit-path .d{ color:var(--ink-2); font-size:0.87rem; max-width:66ch; margin-top:4px; }
+.crit-path .meta{ display:flex; gap:14px; margin-top:6px; font-size:0.78rem; color:var(--muted); font-family:var(--mono); flex-wrap:wrap; }
+
+footer{ padding:30px clamp(20px,4vw,56px) 60px; color:var(--muted); font-size:0.8rem; font-family:var(--mono); }
+</style>
+
+<div class="shell">
+  <nav class="toc" id="toc">
+    <p class="toc-brand">QuantOS Blueprint<small>Target architecture &middot; 2026-07-13</small></p>
+    <hr>
+    <ol>
+      <li><a href="#s1">Architecture Blueprint</a></li>
+      <li><a href="#s2">Gap Analysis</a></li>
+      <li><a href="#s3">Target Architecture</a></li>
+      <li><a href="#s4">Migration Strategy</a></li>
+      <li><a href="#s5">Module Specifications</a></li>
+      <li><a href="#s6">Engineering Standards</a></li>
+      <li><a href="#s7">Testing Standards</a></li>
+      <li><a href="#s8">Infrastructure Standards</a></li>
+      <li><a href="#s9">Risk Controls</a></li>
+      <li><a href="#s10">Automation Roadmap</a></li>
+      <li><a href="#s11">Implementation Phases</a></li>
+      <li><a href="#s12">Critical Path</a></li>
+      <li><a href="#s13">Success Criteria</a></li>
+      <li><a href="#s14">Definition of Done</a></li>
+      <li><a href="#s15">Readiness Assessment</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <p class="hero-eyebrow">Architecture Review &middot; No Code &middot; Ground Truth: 2026-07-13 Audit</p>
+      <h1>Institutional discipline, retail-appropriate infrastructure. Not the reverse.</h1>
+      <p class="lead">Every module below exists because a specific, cited audit finding needs a structural home, not because a bigger platform needs more parts. The target is one repository, one shared library, one config system, one test suite &mdash; sized for a solo operator running ₹4L paper capital toward a ₹1.6&ndash;10L live book, built so that live trading is a broker-adapter swap on top of paper, not a second system.</p>
+      <div class="flow-strip">
+        <div class="flow-step"><span class="n">01</span>Research</div>
+        <div class="flow-step"><span class="n">02</span>Features</div>
+        <div class="flow-step"><span class="n">03</span>Strategy</div>
+        <div class="flow-step"><span class="n">04</span>Backtest</div>
+        <div class="flow-step"><span class="n">05</span>Walk-Fwd</div>
+        <div class="flow-step"><span class="n">06</span>Portfolio</div>
+        <div class="flow-step"><span class="n">07</span>Risk</div>
+        <div class="flow-step"><span class="n">08</span>Execution</div>
+        <div class="flow-step"><span class="n">09</span>Broker</div>
+        <div class="flow-step"><span class="n">10</span>Paper</div>
+        <div class="flow-step"><span class="n">11</span>Live</div>
+        <div class="flow-step"><span class="n">12</span>Monitor</div>
+        <div class="flow-step"><span class="n">13</span>Analytics</div>
+        <div class="flow-step"><span class="n">14</span>Self-Diagnose</div>
+      </div>
+    </div>
+
+    <section id="s1">
+      <p class="sec-num">01 / 15</p>
+      <h2>Architecture Blueprint</h2>
+      <p>Clean/Hexagonal architecture: a <strong>pure, deterministic domain core</strong> (signal math, sizing math, risk math &mdash; no I/O, fully unit-testable) surrounded by <strong>ports</strong> (interfaces the core depends on: <code>DataProvider</code>, <code>BrokerAdapter</code>, <code>Clock</code>, <code>Repository</code>, <code>AlertSink</code>) implemented by <strong>adapters</strong> (yfinance client, NSE scraper, Zerodha/Angel One clients, SQLite repository, Telegram bot). Dependencies point inward only &mdash; adapters depend on ports, domain code never imports a concrete adapter. This single rule is what makes paper trading and live trading the same code path with a different adapter plugged in, and what makes the domain layer testable without a network connection.</p>
+
+      <div class="layers">
+        <div class="layer"><div class="lname">Adapters &mdash; imperative shell, all I/O and side effects live here</div>
+          <div class="chips">
+            <span class="chip l1">yfinance client</span><span class="chip l1">NSE scraper</span><span class="chip l1">ZerodhaKiteAdapter</span>
+            <span class="chip l1">AngelOneAdapter</span><span class="chip l1">PaperBrokerAdapter</span><span class="chip l1">SQLite/Postgres repo</span>
+            <span class="chip l1">Parquet store</span><span class="chip l1">Telegram alert sink</span><span class="chip l1">system clock</span>
+          </div>
+        </div>
+        <div class="arrow-note">implements &uarr;&uarr;&uarr; depends on interfaces defined below &uarr;&uarr;&uarr;</div>
+        <div class="layer"><div class="lname">Ports &mdash; interfaces the domain owns, adapters fulfil</div>
+          <div class="chips">
+            <span class="chip l2">DataProvider</span><span class="chip l2">BrokerAdapter</span><span class="chip l2">Repository</span>
+            <span class="chip l2">Clock</span><span class="chip l2">AlertSink</span><span class="chip l2">CostModel</span>
+          </div>
+        </div>
+        <div class="arrow-note">used by &darr;&darr;&darr; domain never imports a concrete adapter &darr;&darr;&darr;</div>
+        <div class="layer core"><div class="lname">Domain core &mdash; functional, deterministic, zero I/O</div>
+          <div class="chips">
+            <span class="chip acc">factors</span><span class="chip acc">strategies</span><span class="chip acc">portfolio</span>
+            <span class="chip acc">risk (math)</span><span class="chip acc">validation</span><span class="chip acc">analytics</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>Why this shape, specifically</h3>
+      <p>The audit's most consequential findings &mdash; fabricated universe (F9), unresolved survivorship bias (F1), cost-model drift across strategies (F4), duplicated params (F8) &mdash; are all instances of the same root cause: <strong>no boundary existed between "logic" and "data/broker/config access."</strong> A strategy script could reach out and hardcode its own universe, its own cost constant, its own params, because nothing stopped it. A hexagonal boundary makes that structurally impossible going forward: a strategy in the domain core can only ask a <code>DataProvider</code> port for a universe &mdash; it cannot define one itself.</p>
+
+      <h3>Scale calibration &mdash; a deliberate decision, not an oversight</h3>
+      <p>"Institutional-grade" describes engineering discipline (correctness, reproducibility, auditability), not infrastructure scale. A weekly-rebalance, four-strategy, ₹4L-book system does not need Kubernetes, a distributed data warehouse, or a multi-region deployment &mdash; it needs Docker Compose on one small VPS, SQLite promoted to Postgres only if concurrent writers ever appear, and a single-node scheduler with a heartbeat. Building institutional-scale infrastructure for retail-scale capital would itself violate the brief's own rule: <em>never add complexity without justification.</em> Every infra choice below states its upgrade trigger explicitly, so scale-up is a documented decision, not a rewrite.</p>
+    </section>
+
+    <section id="s2">
+      <p class="sec-num">02 / 15</p>
+      <h2>Gap Analysis</h2>
+      <p>Every row is a finding from the 2026-07-13 audit, mapped to the module that closes it. Nothing here is invented; everything traces to cited evidence.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Audit finding</th><th>Current state</th><th>Closed by</th></tr></thead>
+        <tbody>
+          <tr><td>F9 &mdash; fabricated 95-ticker universe</td><td><code>data_loader.py:57-74</code>, hardcoded list</td><td><strong>data</strong> (point-in-time provider, single source)</td></tr>
+          <tr><td>F1 &mdash; survivorship bias, current-only universe</td><td><code>fetch_universe.py</code> live-scrapes current constituents only</td><td><strong>data</strong> (PIT index store)</td></tr>
+          <tr><td>F4 &mdash; cost model inconsistent across 4 strategies</td><td>3 of 4 hardcode flat 0.003&ndash;0.005</td><td><strong>portfolio</strong>/<strong>execution</strong> (single CostModel port)</td></tr>
+          <tr><td>F6 &mdash; no portfolio-level risk engine</td><td>zero cross-strategy exposure/correlation/kill-switch (grep-confirmed)</td><td><strong>risk</strong></td></tr>
+          <tr><td>F8 &mdash; duplicated params, no enforcement</td><td>module-level constants copy-pasted, can silently diverge</td><td><strong>config</strong> + <strong>strategies</strong> registry</td></tr>
+          <tr><td>No shared architecture, 2 codebases</td><td>zero shared package between AlgoTrader/ and trading_backtests/</td><td>single <code>quantos_core</code> package (§3)</td></tr>
+          <tr><td>Zero broker integration</td><td>confirmed zero kiteconnect/SmartAPI calls anywhere</td><td><strong>brokers</strong> (interface first, paper-only until compliance clears)</td></tr>
+          <tr><td>No git, no run manifest</td><td>confirmed no <code>.git</code> anywhere in the tree</td><td>Migration Phase&nbsp;0 (§4, §11)</td></tr>
+          <tr><td>16 strategy scripts, zero shared class</td><td>confirmed via <code>class</code> grep &mdash; zero hits</td><td><strong>strategies</strong> interface</td></tr>
+          <tr><td>Blanket <code>except Exception</code>, one fully silent</td><td><code>download_data.py:64</code> &mdash; no log, no <code>as e</code></td><td>Engineering Standards (§6) error-handling policy</td></tr>
+          <tr><td>Zero test framework, 16 strategies untested</td><td>5 gated <code>--selftest</code> fns cover 5 of ~22 modules</td><td><strong>tests</strong> (§7)</td></tr>
+          <tr><td>No alerting/monitoring</td><td>confirmed zero Telegram/Slack/SMTP/webhook</td><td><strong>monitoring</strong></td></tr>
+          <tr><td>Scheduler: missing log day, truncated run, late trigger</td><td><code>trader_logs/</code> 2026-07-01 missing, 06-30 truncated, 07-08 late</td><td><strong>services</strong> (supervised process, heartbeat)</td></tr>
+          <tr><td>Quality Factor PE filter is a documented no-op</td><td><code>07_quality_factor.py:211</code>, PE hardcoded <code>None</code></td><td><strong>validation</strong> (automated bias detectors in CI)</td></tr>
+          <tr><td>No experiment tracking / run manifest</td><td>~100 result files, no git SHA or manifest tying any to a code state</td><td><strong>experiments</strong> + <strong>storage</strong></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s3">
+      <p class="sec-num">03 / 15</p>
+      <h2>Target Architecture</h2>
+      <p>One repository. One package tree. Deployable <strong>services</strong> are thin processes that import the shared library and wire concrete adapters via dependency injection at startup &mdash; they contain no business logic themselves.</p>
+      <pre>quantos/
+├── pyproject.toml            # single dependency manifest + lockfile, whole repo
+├── quantos_core/             # THE shared library — everything importable, zero side effects at import time
+│   ├── config/                 → typed, layered config loading (pydantic)
+│   ├── data/                   → providers, PIT store, corp actions, quality checks
+│   ├── factors/                → reusable factor/feature functions, pure
+│   ├── strategies/              → Strategy interface + registry + implementations
+│   ├── portfolio/               → allocation, sizing, constraints
+│   ├── risk/                    → pre-trade gate, portfolio monitor, kill switch
+│   ├── execution/               → order lifecycle, retries, slippage
+│   ├── brokers/                  → BrokerAdapter interface + Zerodha/AngelOne/Paper/IBKR
+│   ├── paper/                    → paper-mode orchestration (uses execution + PaperBrokerAdapter)
+│   ├── live/                     → live-mode orchestration (uses execution + real BrokerAdapter)
+│   ├── analytics/                → performance/factor attribution, reporting
+│   ├── validation/               → backtest engine, walk-forward CV, bias detectors
+│   ├── monitoring/               → metrics, health checks, alert client
+│   ├── storage/                  → repositories over SQLite/Postgres/Parquet
+│   └── utils/                    → logging setup, calendar, determinism helpers
+├── services/                  # thin deployable entry points, each imports quantos_core
+│   ├── data_service/  research_service/  paper_trading_service/
+│   ├── live_trading_service/  risk_monitor_service/  api/
+├── dashboard/                 # read-only UI over api — Phase 9, built last
+├── experiments/                # dated research output — NOT imported by services
+├── strategies_registry/        # versioned YAML params — one source of truth (kills F8)
+├── tests/                      # unit / integration / regression / property / chaos
+├── tools/                      # one-off ops scripts — deliberately NOT importable by services
+├── infra/                      # Dockerfiles, compose, CI config — right-sized, §8
+└── docs/adr/                   # Architecture Decision Records</pre>
+
+      <h3>Dependency direction (no cycles, enforced by CI import-linter)</h3>
+      <p class="muted"><code>services</code> &rarr; <code>quantos_core.*</code> &rarr; <code>quantos_core.utils</code>. Within <code>quantos_core</code>: <code>risk</code>/<code>portfolio</code>/<code>execution</code> depend on <code>strategies</code>/<code>factors</code>/<code>data</code> ports, never the reverse. <code>brokers</code> depends on nothing else in the tree except <code>utils</code>. <code>experiments</code> and <code>tools</code> are leaves &mdash; nothing depends on them, and they may import <code>quantos_core</code> but never the other way. This asymmetry is what stops a research script from silently becoming a production dependency, which is exactly what happened when 18 audit/research markdown docs and the production strategy code ended up in the same flat folder.</p>
+    </section>
+
+    <section id="s4">
+      <p class="sec-num">04 / 15</p>
+      <h2>Migration Strategy</h2>
+      <p>Strangler-fig, not rewrite. The existing, working, research-validated strategy logic in <code>momentum_backtest.py</code>/<code>paper_trader.py</code> is <strong>correct enough to trust</strong> (proven look-ahead-free, proven deterministic) &mdash; the problem is everything around it, not the signal math itself. Migration preserves that logic byte-for-byte while relocating it behind new interfaces, verified at every step by regression tests asserting old-output equals new-output before any behavior is allowed to change.</p>
+      <ol class="plain">
+        <li><strong>Git first, before anything else moves.</strong> <code>git init</code> at the new <code>quantos/</code> root, commit the current AlgoTrader + trading_backtests trees verbatim as the baseline tag. Every subsequent step is a reviewable diff against that baseline &mdash; the single highest-leverage, lowest-risk first move available, and the audit's most basic unmet precondition.</li>
+        <li><strong>Characterize before refactor.</strong> Write regression tests that run the CURRENT scripts against fixed cached inputs and pin their exact output (equity curve, trade log) as golden files. These tests exist to fail loudly if a "pure refactor" accidentally changes behavior &mdash; they are deleted or superseded once the real test suite (§7) covers the same ground.</li>
+        <li><strong>Extract, don't rewrite, one module at a time</strong> in the dependency order of §12 &mdash; config and storage first (nothing depends on business logic), data platform second (strategies depend on it), strategies third (mechanical port behind the new interface, logic unchanged), then portfolio/risk/execution/brokers.</li>
+        <li><strong>Each extraction ends with the golden-file regression test still passing.</strong> If a fix is warranted mid-extraction (e.g. F9's fabricated universe), it happens as a separate, explicitly-labelled commit that intentionally breaks the golden file, with the new expected output re-pinned and the reason recorded in an ADR &mdash; never silently.</li>
+        <li><strong>Old entry points stay callable until their replacement service has run in parallel for at least one full rebalance cycle</strong> with matching output, then are deleted. No flag day.</li>
+      </ol>
+    </section>
+
+    <section id="s5">
+      <p class="sec-num">05 / 15</p>
+      <h2>Module Specifications</h2>
+      <p class="muted">All 21 modules the brief requested, in the order given. Each expands to full spec &mdash; purpose, responsibilities, inputs/outputs, dependencies, interface, config, error handling, failure modes &amp; recovery, testing.</p>
+
+      <div class="mod-list" id="modlist"></div>
+    </section>
+
+    <section id="s6">
+      <p class="sec-num">06 / 15</p>
+      <h2>Engineering Standards</h2>
+      <h3>SOLID, concretely (not as a slogan)</h3>
+      <ul>
+        <li><strong>Single Responsibility.</strong> A strategy computes signals. It does not fetch its own data, does not size its own positions, does not know what a broker is. Today's <code>momentum_backtest.py</code> does all four in one 615-line file &mdash; the split is the whole point of §3's layering.</li>
+        <li><strong>Open/Closed.</strong> New strategy = new class implementing the <code>Strategy</code> protocol + one YAML entry. Zero existing files change. Today, adding strategy 17 means copy-pasting a whole script.</li>
+        <li><strong>Liskov.</strong> Any <code>BrokerAdapter</code> (Paper, Zerodha, Angel One) must be substitutable in the execution engine with no caller-side branching. This is the mechanism that makes paper trading a real rehearsal of live.</li>
+        <li><strong>Interface Segregation.</strong> <code>BrokerAdapter</code> is not one fat interface &mdash; order placement, market data, and account/margin queries are separate protocols a given adapter composes, so a data-only context never has to stub out order methods it can't support.</li>
+        <li><strong>Dependency Inversion.</strong> Domain code depends on <code>DataProvider</code>/<code>BrokerAdapter</code> abstractions it owns; adapters live outside and implement them. This is the enforced rule in §1, not aspirational.</li>
+      </ul>
+      <h3>Functional core, imperative shell</h3>
+      <p>Everything in <code>factors</code>, <code>strategies</code> (signal logic), <code>portfolio</code> (sizing math), and <code>risk</code> (limit math) is pure: same inputs &rarr; same outputs, no hidden state, no I/O. This is what makes the <code>--selftest</code> pattern the audit found and approved of (assert-based, hash-seed-varying determinism checks) generalizable into real property tests instead of five hand-written scripts. All I/O &mdash; network calls, file writes, broker orders &mdash; lives in adapters at the shell, called only from <code>services</code>.</p>
+      <h3>Eliminate, by policy</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Anti-pattern (audit-confirmed)</th><th>Policy going forward</th></tr></thead>
+        <tbody>
+          <tr><td>Hardcoded universe/params</td><td>All params in <code>strategies_registry/*.yaml</code>, loaded via <code>config</code>; CI fails a PR that adds a bare numeric literal inside <code>quantos_core/strategies/</code> (ruff custom rule)</td></tr>
+          <tr><td>Duplicate cost/metrics logic across 4 strategies</td><td>One <code>CostModel</code> port, one <code>analytics.metrics</code> module; a second implementation of either is a review-blocking finding</td></tr>
+          <tr><td>Silent <code>except Exception: return pd.DataFrame()</code></td><td>Typed exceptions only (<code>DataFetchError</code>, <code>BrokerConnectionError</code>, <code>RiskLimitBreach</code>); a caught exception is either re-raised, or logged at ERROR with the exception object <em>and</em> routed through <code>AlertSink</code> &mdash; never both silent and swallowed</td></tr>
+          <tr><td>Manual daily script invocation</td><td><code>services</code> run as supervised, heartbeated processes (§8); a human runs nothing by hand in steady state</td></tr>
+          <tr><td>Global mutable state (module-level dicts in <code>paper_trader.py</code>)</td><td>All state through <code>storage</code> repositories with explicit read/write boundaries and transactions</td></tr>
+          <tr><td>Single point of failure: one orphan <code>.ps1</code> hardcoding both repos' paths</td><td>Each service independently deployable and restartable; no service's failure blocks another's schedule</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s7">
+      <p class="sec-num">07 / 15</p>
+      <h2>Testing Standards</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Layer</th><th>Target coverage</th><th>What it catches</th></tr></thead>
+        <tbody>
+          <tr><td>Unit (domain core)</td><td>&ge;90% of <code>factors</code>/<code>strategies</code>/<code>portfolio</code>/<code>risk</code> math</td><td>Pure functions, cheap to test exhaustively &mdash; the class of bug <code>TASK_FIX_BUGS.md</code> documents (decimal-threshold, index-vs-value confusion) would be caught here, not by manual eyeballing</td></tr>
+          <tr><td>Property tests</td><td>All sizing/risk functions with numeric invariants</td><td>e.g. "position sizes always sum to &le;100% deployed capital," "no size is ever negative" &mdash; generalizes the audit's hash-seed-varying determinism checks beyond the 5 files that currently have them</td></tr>
+          <tr><td>Integration (adapters)</td><td>Every adapter, against recorded fixtures (VCR-style cassettes)</td><td>yfinance/broker call shape changes, without hitting the network in CI or burning API rate limits</td></tr>
+          <tr><td>Deterministic replay</td><td>Every strategy, one full historical run</td><td>Byte-identical output run to run &mdash; formalizes the audit's manual "3 consecutive byte-identical runs" proof into a CI gate that runs on every PR, not once</td></tr>
+          <tr><td>Regression (golden file)</td><td>All 20 migrated strategies at cutover</td><td>Migration-safety net described in §4 &mdash; catches accidental behavior change during extraction</td></tr>
+          <tr><td>Bias detectors</td><td><code>validation</code> module, run in CI weekly</td><td>Automated look-ahead check (assert fill date &gt; signal date, generalized from <code>momentum_backtest.py:316</code>'s single hand-written assert), PIT-universe check, survivorship-bias flag</td></tr>
+          <tr><td>Chaos / failure injection</td><td><code>brokers</code>, <code>data</code>, <code>services</code></td><td>Simulated broker disconnect mid-order, simulated data-provider timeout, simulated process kill mid-rebalance &mdash; proves the recovery paths in §5/§9 actually work, not just that they're written</td></tr>
+          <tr><td>Stress / performance</td><td><code>execution</code>, <code>risk</code></td><td>Order-burst handling, risk-gate latency under full-universe (500-name) scoring</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted">CI blocks merge on: lint (ruff) &middot; type-check (mypy, strict on <code>quantos_core</code>) &middot; unit + property + integration + bias-detector suites. Chaos/stress run on a schedule, not per-PR, and page the operator on regression &mdash; not blocking, but never silent.</p>
+    </section>
+
+    <section id="s8">
+      <p class="sec-num">08 / 15</p>
+      <h2>Infrastructure Standards</h2>
+      <h3>Git &amp; branching</h3>
+      <p>Trunk-based. Protected <code>main</code>. Short-lived feature branches, one concern each. Solo-operator "review" = a mandatory cooling-off checklist (does this touch the frozen-strategy list per the prospective-validation rule? does it change a golden-file output? is there a test?) enforced by a PR template, not a second human.</p>
+      <h3>CI/CD pipeline</h3>
+      <p class="muted">Push &rarr; lint + typecheck + test (§7, PR-blocking subset) &rarr; build Docker image, tag with commit SHA &rarr; (main only) manual approval &rarr; deploy to the single host by pulling the tagged image. Rollback = redeploy the previous SHA-tagged image; image immutability makes this a one-command action, not a re-debug session.</p>
+      <h3>Containers &mdash; right-sized</h3>
+      <p>Docker Compose, one host (a small VPS or the existing laptop running headless), one container per service (<code>data_service</code>, <code>paper_trading_service</code>, <code>risk_monitor_service</code>, later <code>live_trading_service</code>), one Postgres/SQLite container for storage. <strong>Explicit non-goal: Kubernetes.</strong> Upgrade trigger, stated in advance so it's a decision not a drift: multiple hosts needed for latency/redundancy reasons, or more than ~5 services needing independent scaling &mdash; neither applies at 4-strategy, weekly-rebalance scale.</p>
+      <h3>Environments</h3>
+      <p><code>dev</code> (local, fixtures/cassettes, no network) &middot; <code>paper</code> (real data providers, <code>PaperBrokerAdapter</code> only) &middot; <code>live</code> (real data providers, real <code>BrokerAdapter</code>, gated by §9's compliance checklist). Config layering (§5, <code>config</code> module) selects environment; the same Docker image runs in all three &mdash; only config and the injected adapter change.</p>
+      <h3>Secrets</h3>
+      <p>Broker API keys and any future LLM keys live in the deploy host's OS-level secret store (Windows Credential Manager locally, or the VPS provider's secret manager if hosted) &mdash; never in <code>.env</code> committed to git, never in a config YAML. <code>.env.example</code>'s current dead-code status (audit-confirmed: nothing loads it) is itself the warning sign this needs an actual loader, not just a template file. Rotation: broker keys rotated on every SEBI-mandated interval at minimum; a rotation runbook lives in <code>docs/</code>, not tribal knowledge.</p>
+      <h3>Versioning &amp; releases</h3>
+      <p>SemVer tags on <code>quantos_core</code>. Strategy versions are separate from platform versions &mdash; a strategy's params/logic version lives in <code>strategies_registry</code> and is what the Prospective Validation freeze (CONTEXT.md's own rule) actually gates, so "restart the validation clock" has a precise, git-diffable trigger instead of a judgment call.</p>
+    </section>
+
+    <section id="s9">
+      <p class="sec-num">09 / 15</p>
+      <h2>Risk Controls</h2>
+      <div class="callout"><strong>Design decision:</strong> VaR/CVaR are computed and reported (§ analytics/monitoring) but are <em>not</em> the primary hard gate at this capital scale. VaR needs return-history depth and regime stability a &lt;1-year live track record doesn't have yet &mdash; a false-precision statistical gate on immature data is worse than a simple, robust limit. The primary gates below are deliberately blunt.</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Control</th><th>Threshold (proposed, tunable via config)</th><th>Action on breach</th></tr></thead>
+        <tbody>
+          <tr><td>Single-name position limit</td><td>15% of book NAV</td><td>Pre-trade gate rejects the order; no partial override without explicit config change + ADR</td></tr>
+          <tr><td>Sector exposure limit</td><td>30% of book NAV</td><td>Pre-trade gate rejects new same-sector orders past limit</td></tr>
+          <tr><td>Cross-strategy correlated exposure, single name</td><td>20% of book NAV aggregated across all live strategies</td><td>The F6 gap, closed: portfolio risk monitor blocks a new order from ANY strategy that would breach the aggregate, not just its own book</td></tr>
+          <tr><td>Daily loss &mdash; soft</td><td>&minus;3% NAV intraday</td><td>Halt new order generation, alert operator, existing positions untouched</td></tr>
+          <tr><td>Daily loss &mdash; hard</td><td>&minus;5% NAV intraday</td><td>Global kill switch engages (see below)</td></tr>
+          <tr><td>Drawdown from high-water mark</td><td>&minus;20% (matches existing backtest MaxDD threshold)</td><td>Strategy flagged for mandatory review; does not auto-liquidate &mdash; a human decision, logged</td></tr>
+          <tr><td>Broker health-check</td><td>3 consecutive failed heartbeats within 60s</td><td>SAFE_MODE: block new orders, alert; existing positions deliberately left alone &mdash; auto-flattening into a disconnect-induced bad quote is its own failure mode</td></tr>
+          <tr><td>SEBI algo-order-rate / Algo-ID tag</td><td>Per current registration status (§13's compliance gate)</td><td>Pre-trade gate rejects any order missing a valid Algo-ID tag once registration is required</td></tr>
+        </tbody>
+      </table></div>
+      <h3>The kill switch</h3>
+      <p>One global, <strong>persisted</strong> (survives process restart &mdash; a flag in <code>storage</code>, not memory) boolean, checked by the pre-trade risk gate before every single order, in every service, with no bypass path. Settable automatically (daily-loss hard breach, data-quality failure, broker health failure) or manually via a CLI the operator can run from anywhere. This is the single control the audit found most conspicuously absent (F6) and the one piece of infrastructure worth building before any other risk-engine sophistication.</p>
+    </section>
+
+    <section id="s10">
+      <p class="sec-num">10 / 15</p>
+      <h2>Automation Roadmap</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Task</th><th>Today</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td>Daily data update</td><td>Part of manual/unconfirmed scheduled run</td><td><code>data_service</code>, own schedule, own health check, independent of trading services</td></tr>
+          <tr><td>Research pipelines</td><td>Ad hoc, one markdown report per question</td><td><code>research_service</code> runnable on demand, output versioned to <code>experiments/</code> automatically</td></tr>
+          <tr><td>Backtests / walk-forward</td><td>Manual script run, params hand-edited</td><td>CI-triggerable job over <code>strategies_registry</code> definitions, output diffed against last run automatically</td></tr>
+          <tr><td>Paper trading</td><td>Manual/unconfirmed-scheduled, confirmed gaps in logs</td><td>Supervised <code>paper_trading_service</code>, heartbeat-monitored, auto-restart on crash</td></tr>
+          <tr><td>Portfolio &amp; risk reports</td><td><code>portfolio_tracker.py</code>, advisory text only</td><td>Scheduled <code>analytics</code> report, pushed via <code>AlertSink</code>, no manual read-the-CSV step</td></tr>
+          <tr><td>Deployment</td><td>None exists</td><td>CI/CD pipeline, §8</td></tr>
+          <tr><td>Monitoring</td><td>None exists</td><td>Health endpoints + metrics + Telegram alerting, always-on</td></tr>
+          <tr><td>Recovery</td><td>Manual (operator notices a missing log)</td><td>Auto-restart on crash; SAFE_MODE on broker/data failure; kill switch on loss breach &mdash; all §9</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s11">
+      <p class="sec-num">11 / 15</p>
+      <h2>Implementation Phases</h2>
+      <p class="muted">Each phase independently deployable, preserves correctness (golden-file regression never breaks silently), reduces debt, raises measured DRS (per the 2026-07-13 audit's own scoring). No phase adds live-capital risk before Phase 8.</p>
+      <ol class="crit-path">
+        <li><div class="t">Phase 0 &mdash; Foundation &amp; Safety<span class="tag">no capital risk change</span></div>
+          <div class="d">git init + baseline tag. Characterization tests around current scripts. Root-cause the 3 confirmed scheduler gaps (missing 07-01 log, truncated 06-30 run, late 07-08 trigger). A primitive persisted kill switch wired into the <em>existing</em> paper traders as a stop-gap, before the real risk engine exists.</div>
+          <div class="meta"><span>Closes: no-git, scheduler reliability</span></div></li>
+        <li><div class="t">Phase 1 &mdash; quantos-core skeleton<span class="tag">config, storage, logging, CI</span></div>
+          <div class="d">Extract <code>config</code>, <code>storage</code>, <code>utils</code>(logging) with zero strategy-logic change. Stand up CI (lint+typecheck+test on every push). Add the missing AlgoTrader dependency manifest + lockfile.</div>
+          <div class="meta"><span>Closes: F8 (partial), no CI, no requirements.txt</span></div></li>
+        <li><div class="t">Phase 2 &mdash; Data Platform<span class="tag">fixes F1 + F9</span></div>
+          <div class="d"><code>data</code> module: <code>DataProvider</code> port, point-in-time universe store, corporate actions, quality validation. Sibling repo's hardcoded 95-ticker list is deleted and replaced by the same provider AlgoTrader uses &mdash; one universe implementation, not two.</div>
+          <div class="meta"><span>Closes: F1, F9</span></div></li>
+        <li><div class="t">Phase 3 &mdash; Strategy Platform<span class="tag">mechanical port, one at a time</span></div>
+          <div class="d">All 20 strategies onto the <code>Strategy</code> interface, logic unchanged, each verified against its golden file before/after. Params externalized to <code>strategies_registry</code>. Shared <code>CostModel</code> adopted by all 4 live strategies.</div>
+          <div class="meta"><span>Closes: no shared class, F4, F8 (remainder)</span></div></li>
+        <li><div class="t">Phase 4 &mdash; Risk Engine<span class="tag">the highest-leverage phase</span></div>
+          <div class="d">Pre-trade gate + portfolio risk monitor + real kill switch (§9), replacing Phase 0's stop-gap. First time the 4 strategies are risk-managed as one book.</div>
+          <div class="meta"><span>Closes: F6</span></div></li>
+        <li><div class="t">Phase 5 &mdash; Validation Hardening<span class="tag">formalizes the audit's own method</span></div>
+          <div class="d">k-fold/purged walk-forward CV beyond the current single split. Automated bias detectors (look-ahead, PIT-universe, survivorship) as CI-run tests, not one-off manual audits. Lightweight experiment tracking (run manifest + git SHA) closing F8's reproducibility half.</div>
+          <div class="meta"><span>Closes: thin walk-forward, no experiment tracking</span></div></li>
+        <li><div class="t">Phase 6 &mdash; Execution Engine + Paper Broker<span class="tag">real order lifecycle, paper-only</span></div>
+          <div class="d"><code>execution</code> module (order object, lifecycle, retries) + <code>brokers.PaperBrokerAdapter</code> as the ONLY implementation. Existing paper traders migrate onto this real pipeline &mdash; paper trading becomes a rehearsal of live, not a separate simulation.</div>
+          <div class="meta"><span>Closes: no order lifecycle, execution engine 0%</span></div></li>
+        <li><div class="t">Phase 7 &mdash; Observability + Automation<span class="tag">monitoring, services</span></div>
+          <div class="d">Structured logs, metrics, health endpoints, Telegram <code>AlertSink</code>. Manual runs converted to supervised, heartbeated <code>services</code>.</div>
+          <div class="meta"><span>Closes: no monitoring/alerting (grep-confirmed absent)</span></div></li>
+        <li><div class="t">Phase 8 &mdash; Live Broker Integration<span class="tag">gated on compliance, not concurrent</span></div>
+          <div class="d">SEBI/Angel One checklist fully closed <em>first</em>. <code>ZerodhaKiteAdapter</code> or <code>AngelOneAdapter</code> implementing the same interface proven in Phase 6. Staged rollout: one strategy, smallest capital tranche, kill switch armed and tested.</div>
+          <div class="meta"><span>Closes: zero broker integration, unresolved SEBI status</span></div></li>
+        <li><div class="t">Phase 9 &mdash; Institutional Hardening<span class="tag">chaos, security, dashboard</span></div>
+          <div class="d">Chaos/failure-injection testing (broker disconnect, data outage). Secret rotation runbook exercised. Read-only <code>dashboard</code> over <code>api</code> &mdash; built last, once there is real telemetry worth displaying.</div>
+          <div class="meta"><span>Closes: untested recovery paths, no dashboard</span></div></li>
+      </ol>
+    </section>
+
+    <section id="s12">
+      <p class="sec-num">12 / 15</p>
+      <h2>Critical Path</h2>
+      <p>Hard dependency order &mdash; each item genuinely blocks the next, independent of calendar time:</p>
+      <p style="font-family:var(--mono); font-size:0.86rem; line-height:2.1;">
+        git baseline
+        &rarr; config/storage skeleton
+        &rarr; data platform (PIT fix)
+        &rarr; strategy interface migration
+        &rarr; risk engine
+        &rarr; execution engine + paper broker
+        &rarr; observability
+        &rarr; <span style="color:var(--critical); font-weight:700;">SEBI compliance closed</span>
+        &rarr; live broker adapter
+        &rarr; chaos-tested hardening
+      </p>
+      <p class="muted">Two items are NOT on this critical path and can run in parallel at any point without blocking it: the SEBI compliance checklist (pure verification, no engineering dependency &mdash; should start immediately, in parallel with Phase 0) and the size-factor regression the research audit already proposed (pure research, doesn't gate any engineering phase). Both are already independently flagged as the two most overdue open items in the 2026-07-13 audit.</p>
+    </section>
+
+    <section id="s13">
+      <p class="sec-num">13 / 15</p>
+      <h2>Success Criteria</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Phase</th><th>Success criterion (measurable)</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Repo under git with baseline tag; zero unexplained scheduler log gaps for 2 consecutive weeks</td></tr>
+          <tr><td>1</td><td>CI green on every push; AlgoTrader installable from a lockfile on a clean machine</td></tr>
+          <tr><td>2</td><td>Zero hardcoded universe lists remain in the codebase (grep-verifiable); PIT membership queryable for any historical date</td></tr>
+          <tr><td>3</td><td>All 20 strategies pass their golden-file regression post-migration; one <code>CostModel</code> import count across all live strategies</td></tr>
+          <tr><td>4</td><td>Kill switch demonstrably blocks an order in an integration test; cross-strategy exposure aggregation returns a real number, not "not implemented"</td></tr>
+          <tr><td>5</td><td>k-fold walk-forward runs in CI; bias-detector suite fails on a deliberately-reintroduced look-ahead bug (mutation-tested)</td></tr>
+          <tr><td>6</td><td>Paper trading runs entirely through the order-lifecycle pipeline; zero direct <code>holdings[ticker] +=</code>-style state mutation remains</td></tr>
+          <tr><td>7</td><td>A killed service process auto-restarts within 5 minutes; a Telegram alert fires within 1 minute of a simulated failure</td></tr>
+          <tr><td>8</td><td>All 7 SEBI checklist items closed with documented evidence; first live order round-trips through the same interface paper trading used</td></tr>
+          <tr><td>9</td><td>Chaos suite (broker disconnect, data outage) passes without manual intervention required</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s14">
+      <p class="sec-num">14 / 15</p>
+      <h2>Definition of Done</h2>
+      <p class="muted">Applies to every module, every phase &mdash; nothing is "complete" without all of these, matching the audit's own standard of "never mark anything complete without repository evidence."</p>
+      <ul>
+        <li>Code lives in <code>quantos_core</code> or a <code>service</code>, imported through its public interface only &mdash; no reaching into another module's internals.</li>
+        <li>Unit/property tests exist and are wired into CI, not gated behind a manual flag.</li>
+        <li>Typed exceptions only; every catch either re-raises or logs+alerts, never both silent and swallowed.</li>
+        <li>Config values sourced from <code>config</code>, zero magic numbers in the diff.</li>
+        <li>An ADR exists for any decision that overrides a default in this document (e.g. changing a risk threshold).</li>
+        <li>Golden-file/regression evidence attached to the PR showing behavior is unchanged, or the change is explicit and justified.</li>
+        <li>Structured log lines and at least one metric emitted for anything that runs unattended.</li>
+        <li>Documented failure mode + recovery path for anything that touches a network call, a broker, or capital.</li>
+      </ul>
+    </section>
+
+    <section id="s15">
+      <p class="sec-num">15 / 15</p>
+      <h2>Final Institutional Readiness Assessment</h2>
+      <p>QuantOS's research discipline on its flagship strategy is genuinely ahead of its software maturity &mdash; that asymmetry is the whole story. The architecture in this document doesn't add capability the project lacks conviction for; it builds the four things a real trading operating system cannot exist without and that the audit found completely or almost completely absent: a <strong>portfolio-level risk engine with a kill switch</strong> (0/5 today), an <strong>execution engine with a real order lifecycle</strong> (dict mutation today), a <strong>single shared library</strong> in place of two disconnected codebases, and a <strong>point-in-time data platform</strong> that makes fabricated/current-only universes structurally impossible rather than a documented caveat.</p>
+      <p>None of Phases 0&ndash;7 require SEBI clearance or touch live capital &mdash; they can proceed in full regardless of how long compliance verification takes, and doing so is the correct order: an institutional-grade paper-trading rehearsal, proven under chaos testing, is worth more than early live capital on an unproven pipeline. Phase 8 is the only phase gated on an external, non-engineering dependency (the compliance checklist), and it is sequenced last on purpose.</p>
+      <p><strong>Readiness verdict:</strong> not institutional-grade today (DRS 53/100, per audit), but on a coherent, evidence-driven, non-speculative path to it &mdash; every module in this blueprint exists to close a specific, cited gap, not to resemble a bigger platform. Confidence in this architecture: high for Phases 0&ndash;7 (pure engineering, no external dependency, directly traceable to audit evidence); dependent on operator follow-through for Phase 8 (the SEBI checklist has been open, unstarted, three months past deadline, since before this blueprint existed).</p>
+    </section>
+
+    <footer>QuantOS Target Architecture Blueprint &middot; no code written &middot; ground truth: (AI) QuantOS Independent Audit, 2026-07-13</footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  var modules = [
+    {n:"01", id:"research", purpose:"Hypothesis-driven research workspace — notebooks/scripts that produce evidence, not production behavior.",
+      why:"The audit's strongest finding (§8: real CAPM→size→3-factor falsification chain) happened here, mixed into the same flat folder as production scripts. This module gives it a proper, separated home so a research finding never accidentally becomes unreviewed production logic.",
+      resp:"Run ad hoc statistical tests against frozen data snapshots; produce dated reports to <code>experiments/</code>; propose (never apply) strategy/param changes.",
+      io:"In: <code>data</code>, <code>validation</code>, <code>analytics</code> (read-only). Out: markdown/notebook reports, structured findings records.",
+      deps:"quantos_core.data, quantos_core.validation, quantos_core.analytics (read-only) — imports nothing from strategies/portfolio/risk/execution.",
+      iface:"<code>run_experiment(spec) -&gt; ExperimentResult</code>. No other module ever imports <code>research</code>.",
+      config:"Data snapshot pointer, output path. No trading params — research never mutates strategy config directly.",
+      err:"Best-effort — a failed experiment logs and stops; never affects a running trading service (they don't depend on this module).",
+      fail:"N/A to trading operations by construction (no downstream dependents). Recovery: re-run against the same pinned snapshot.",
+      test:"Reproducibility test: same snapshot + same spec ⇒ same result, byte-identical." },
+    {n:"02", id:"data", purpose:"The data platform: ingestion, point-in-time storage, corporate actions, quality validation, caching.",
+      why:"F1 and F9 are both data-layer defects — a current-only universe fetch and a fabricated hardcoded list. Centralizing behind one point-in-time-aware provider makes both bugs structurally unrepeatable.",
+      resp:"Fetch/cache OHLCV and fundamentals; maintain point-in-time index membership; apply corporate-action adjustments; validate data quality (gaps, stale prices, delisting flags) before anything downstream reads it.",
+      io:"In: yfinance/NSE adapters (network). Out: <code>PriceSeries</code>, <code>Universe(as_of: date)</code>, <code>Fundamentals(as_of: date)</code> — all point-in-time-parameterized, never 'current' by default.",
+      deps:"Adapters only (yfinance client, NSE scraper) via the <code>DataProvider</code> port. No dependency on strategies/portfolio.",
+      iface:"<code>get_universe(as_of) -&gt; list[Ticker]</code> · <code>get_prices(tickers, start, end) -&gt; DataFrame</code> · <code>get_fundamentals(ticker, as_of) -&gt; Fundamentals</code>",
+      config:"Provider selection, cache TTL, PIT snapshot cadence.",
+      err:"<code>DataFetchError</code> (typed, replaces today's fully-silent <code>except Exception: return pd.DataFrame()</code> in <code>download_data.py:64</code>) — always logged with the failing ticker/date, always routed through the caller's decision, never silently returns an empty frame.",
+      fail:"Provider outage → serve last-known-good cache with an explicit staleness flag, never a silent empty result. Recovery: automatic retry with backoff; alert if staleness exceeds 2 trading days.",
+      test:"Unit: PIT-index correctness (a ticker delisted mid-window is excluded from later-date queries). Integration: cassette-recorded provider responses." },
+    {n:"03", id:"factors", purpose:"Reusable, pure factor/feature computation — momentum, quality, value, low-volatility, size.",
+      why:"Today, factor logic is embedded inline inside each of 20 separate strategy scripts (feature-engineering maturity scored 2/5 in the audit). No strategy currently imports a shared factor function.",
+      resp:"Compute a named factor score given price/fundamental history as of a date. Nothing else — no ranking, no sizing, no I/O.",
+      io:"In: <code>PriceSeries</code>/<code>Fundamentals</code> from <code>data</code>. Out: <code>pd.Series[ticker -&gt; score]</code>.",
+      deps:"None beyond numpy/pandas. Deliberately dependency-free within quantos_core so it's trivially unit-testable.",
+      iface:"<code>momentum_12_1(prices, as_of) -&gt; Series</code>, <code>quality_score(fundamentals, as_of) -&gt; Series</code>, one function per factor, same signature shape.",
+      config:"Factor-specific lookback/skip windows — sourced from <code>config</code>, not hardcoded (kills the 12M-1M constants currently embedded in <code>momentum_backtest.py</code>).",
+      err:"Missing data for a ticker → NaN in the output series, never a dropped/silent exclusion a caller can't see.",
+      fail:"Pure function — no runtime failure mode beyond bad input, which unit tests cover directly.",
+      test:"Property tests: known synthetic price series ⇒ known momentum score, exactly. Golden-value tests against the audit's already-verified momentum computation." },
+    {n:"04", id:"strategies", purpose:"Strategy interface, registry, and the (ported, unchanged-logic) implementations of all 20 existing strategies.",
+      why:"Confirmed via grep: zero <code>class</code> definitions across 16 sibling-repo strategy files — 4,513 LOC of independent, copy-pasted scripts. F8: params duplicated with nothing enforcing parity between files.",
+      resp:"Given a universe + factor scores + portfolio state, produce target signals/weights. Strategy-specific parameters live in <code>strategies_registry/*.yaml</code>, not in code.",
+      io:"In: <code>Universe</code>, factor scores, <code>PortfolioState</code>. Out: <code>TargetWeights: dict[Ticker, float]</code>.",
+      deps:"quantos_core.factors, quantos_core.data (via injected port) — never quantos_core.execution or quantos_core.brokers directly.",
+      iface:"<code>class Strategy(Protocol): def generate_signals(self, ctx: StrategyContext) -&gt; TargetWeights</code>, plus <code>metadata() -&gt; StrategyMeta(name, version, params_schema)</code>.",
+      config:"One YAML per strategy per version in <code>strategies_registry/</code>, git-tracked, diffable — replaces module-level constants.",
+      err:"A strategy raising mid-signal-generation halts only that strategy's rebalance for that cycle; other strategies are unaffected (today, a scheduler-level crash in one strategy has previously blocked visibility into the others).",
+      fail:"Strategy exception → logged, alerted, that cycle's target weights default to 'no change' (never to an undefined/garbage state).",
+      test:"Golden-file regression per strategy at migration (§4). Property test: weights are always non-negative and sum to ≤1.0 deployed capital." },
+    {n:"05", id:"portfolio", purpose:"Capital allocation across strategies: sizing, risk-parity/equal-weight/vol-targeting/Kelly options, sector/exposure/liquidity/correlation constraints.",
+      why:"Portfolio-optimizer maturity scored 1/5 — equal-weight-top-10 is the only allocation logic that exists anywhere, and it's per-strategy, never cross-strategy. This is the first module that ever looks at all 4 live strategies as one book.",
+      resp:"Convert each strategy's target weights into actual position sizes given available capital, constraints, and what every OTHER strategy already holds.",
+      io:"In: per-strategy <code>TargetWeights</code>, <code>PortfolioState</code> (all strategies), constraint config. Out: <code>OrderIntent[]</code> (not yet orders — pre-risk-gate).",
+      deps:"quantos_core.strategies (consumes), quantos_core.risk (constraints), quantos_core.storage (current state).",
+      iface:"<code>allocate(signals: dict[Strategy, TargetWeights], state: PortfolioState) -&gt; list[OrderIntent]</code>",
+      config:"Sizing method per strategy, sector/correlation limits (§9 defaults, overridable per ADR).",
+      err:"A constraint violation produces a reduced/rejected <code>OrderIntent</code> with a logged reason — never a silently-resized position the operator can't audit.",
+      fail:"If <code>PortfolioState</code> is unavailable (storage outage), allocation halts entirely rather than allocate against stale/guessed state.",
+      test:"Property tests: aggregate sizing never exceeds capital; correlation constraint provably blocks a constructed correlated pair in a test fixture." },
+    {n:"06", id:"risk", purpose:"Pre-trade risk gate + portfolio risk monitor + the global kill switch.",
+      why:"F6 — confirmed zero cross-strategy exposure aggregation, zero correlation check, zero kill switch anywhere in either codebase. Highest-leverage new module in the platform.",
+      resp:"Reject any <code>OrderIntent</code> that breaches a limit (§9) before it becomes an order. Continuously monitor aggregate exposure, daily P&amp;L, broker/data health; flip the kill switch when a hard threshold is breached.",
+      io:"In: <code>OrderIntent[]</code>, live <code>PortfolioState</code>, broker/data health signals. Out: approved <code>Order[]</code> or rejections with reasons; kill-switch state changes.",
+      deps:"quantos_core.storage (persisted kill-switch state), quantos_core.monitoring (health signals in), quantos_core.monitoring (alerts out).",
+      iface:"<code>check_pretrade(intent) -&gt; Approved | Rejected(reason)</code> · <code>kill_switch.is_active() -&gt; bool</code> · <code>kill_switch.engage(reason)</code> (persisted, not in-memory).",
+      config:"All §9 thresholds, one file, versioned — a threshold change is a reviewable diff, not a code edit.",
+      err:"Ambiguous risk state (e.g. can't compute current exposure) defaults to REJECT, never to APPROVE — fail closed, always.",
+      fail:"Storage unavailable → kill switch state can't be read → fail closed (block all orders) until storage recovers. This is the one place 'fail closed' is non-negotiable.",
+      test:"Integration test: constructed breach scenario provably engages kill switch and provably blocks the next order attempt." },
+    {n:"07", id:"execution", purpose:"Order lifecycle: generation, validation, routing, tracking, partial fills, retries, slippage/cost accounting, execution analytics.",
+      why:"Today 'execution' is <code>holdings[ticker] += shares</code> inside <code>paper_trader.py</code> — no order object exists, no lifecycle, no retry semantics. Both paper and (future) live need to share this exact pipeline for the paper→live transition to be low-risk.",
+      resp:"Turn an approved <code>Order</code> into broker calls via the injected <code>BrokerAdapter</code>; track order state (queued→submitted→partial→filled/cancelled); apply the shared <code>CostModel</code>; retry transient failures with backoff.",
+      io:"In: approved <code>Order[]</code> from <code>risk</code>. Out: <code>Fill[]</code>, updated <code>PortfolioState</code>, execution-quality metrics (slippage vs. expected).",
+      deps:"quantos_core.brokers (via <code>BrokerAdapter</code> port — never a concrete broker class), quantos_core.storage (order/trade journal).",
+      iface:"<code>submit(order) -&gt; OrderHandle</code> · <code>poll(handle) -&gt; OrderStatus</code> · <code>cancel(handle)</code> — identical whether the underlying adapter is Paper or a real broker.",
+      config:"Retry policy (max attempts, backoff), slippage assumptions for paper mode.",
+      err:"<code>BrokerConnectionError</code>, <code>OrderRejectedError</code> — both typed, both logged with the order intent that failed, both alertable.",
+      fail:"Broker adapter unresponsive mid-order → order marked UNKNOWN (not silently assumed filled or cancelled), reconciliation required before that ticker trades again — the ambiguous state is surfaced, never guessed.",
+      test:"Chaos: simulated partial fill, simulated broker timeout mid-submit, simulated duplicate-order replay — each has an asserted expected system state." },
+    {n:"08", id:"brokers", purpose:"Common broker interface + adapters: Angel One, Zerodha, Interactive Brokers (future), Paper.",
+      why:"Confirmed zero broker integration anywhere in either codebase. Building the interface before any real adapter means Paper is just adapter #1 of N, not a separate system — live trading becomes 'implement adapter #2,' not 'build a second platform.'",
+      resp:"Authenticate, maintain session, place/cancel/query orders, fetch positions/margins, stream quotes, report health — behind one interface regardless of which broker.",
+      io:"In: <code>Order</code> objects, credentials (from secrets store). Out: <code>OrderAck</code>, <code>Fill</code>, <code>Position[]</code>, <code>BrokerHealth</code>.",
+      deps:"Only quantos_core.utils. Nothing in quantos_core depends on a specific broker package beyond this module.",
+      iface:"<code>class BrokerAdapter(Protocol): connect() · authenticate() · place_order(order) -&gt; OrderAck · cancel_order(id) · get_positions() -&gt; list[Position] · get_margins() -&gt; Margins · health_check() -&gt; BrokerHealth</code>",
+      config:"Per-adapter: API key reference (secrets store, never inline), rate limits, reconnect policy.",
+      err:"Auth failure, rate-limit breach, session expiry — each a distinct typed exception so <code>risk</code>/<code>execution</code> can react differently (e.g. rate-limit ⇒ backoff and retry; auth failure ⇒ SAFE_MODE and alert immediately).",
+      fail:"Session expiry mid-day → automatic re-auth attempt; repeated failure → SAFE_MODE (§9) and alert, never a silent stop.",
+      test:"Integration against provider sandbox/cassette where available; contract tests asserting every adapter satisfies the full <code>BrokerAdapter</code> protocol identically." },
+    {n:"09", id:"paper", purpose:"Paper-trading orchestration: runs the real execution engine against <code>PaperBrokerAdapter</code>.",
+      why:"Today's paper trader is a bespoke dict-mutation loop disconnected from any future live path (audit: maturity 3/5 but architecturally isolated). Redefining paper trading as 'live trading pointed at a fake broker' is the core move that makes go-live a config change, not a rewrite.",
+      resp:"Drive the daily/weekly cycle (signal → allocate → risk-gate → execute → journal) using <code>PaperBrokerAdapter</code>; persist state; maintain trade/order journals; support replay for debugging.",
+      io:"In: strategy signals, market data. Out: journaled trades/orders, portfolio snapshots, replayable event log.",
+      deps:"quantos_core.strategies, portfolio, risk, execution, brokers.PaperBrokerAdapter — the exact same dependency graph <code>live</code> will use.",
+      iface:"<code>run_cycle(as_of: date) -&gt; CycleReport</code> — identical signature to <code>live.run_cycle</code>.",
+      config:"Virtual starting capital (currently ₹1L per strategy — becomes config, not a hardcoded constant), replay mode toggle.",
+      err:"Same typed-exception policy as <code>execution</code> — paper mode is not a lower error-handling bar, it's the rehearsal for live's.",
+      fail:"Crash mid-cycle → <code>storage</code>-persisted state means restart resumes cleanly, no duplicate/lost fills (addresses the audit's confirmed 2026-06-09 double-run-in-one-day incident).",
+      test:"End-to-end: full cycle against fixture data produces the exact expected journal, every time." },
+    {n:"10", id:"live", purpose:"Live-trading orchestration: identical to <code>paper</code>, wired to a real <code>BrokerAdapter</code>, plus capital management, compliance logging, health checks.",
+      why:"Doesn't exist today (0% — confirmed no broker code anywhere). Deliberately the smallest possible module: everything it does, <code>paper</code> already does against a fake broker — this module is a broker swap plus the compliance/capital controls real money requires.",
+      resp:"Same cycle as <code>paper</code>, plus: verify kill switch state before every cycle, verify SEBI Algo-ID tagging on every order, log every action to an immutable compliance audit trail, run pre-market and post-market health checks.",
+      io:"In/out: identical shape to <code>paper</code>, real capital and real broker on the other side of the adapter.",
+      deps:"Identical to <code>paper</code>, with <code>brokers.ZerodhaKiteAdapter</code>/<code>AngelOneAdapter</code> instead of <code>PaperBrokerAdapter</code>.",
+      iface:"<code>run_cycle(as_of: date) -&gt; CycleReport</code> — same signature as <code>paper.run_cycle</code>, by design.",
+      config:"Real capital limits, which strategies are live-enabled (staged rollout per Phase 8), Algo-ID per strategy.",
+      err:"Any error in a live cycle is ERROR-level minimum and always alerts — no error in this module is ever merely logged.",
+      fail:"Any ambiguous state (unknown fill, broker disconnect, kill-switch-read failure) halts new orders and preserves existing positions untouched — never auto-liquidates on ambiguity.",
+      test:"Everything <code>paper</code> requires, plus a mandatory chaos-test pass (§7) before Phase 8 is considered done, plus staged capital rollout as its own test (§11 Phase 8)." },
+    {n:"11", id:"analytics", purpose:"Performance attribution, factor attribution, portfolio analytics, scheduled reporting.",
+      why:"<code>factor_attribution.py</code> and <code>portfolio_tracker.py</code> are one-off scripts today with no shared analytics layer — this consolidates them into something both research and live operations query the same way.",
+      resp:"Compute CAGR/Sharpe/Sortino/MaxDD/Calmar, factor exposure, cross-strategy correlation, attribution of return to factor vs. idiosyncratic — on demand and on schedule.",
+      io:"In: <code>PortfolioState</code> history, trade journal, factor scores. Out: reports (structured + human-readable), metrics pushed to <code>monitoring</code>.",
+      deps:"quantos_core.storage (history), quantos_core.factors (attribution basis).",
+      iface:"<code>performance_report(strategy, period) -&gt; Report</code> · <code>factor_attribution(strategy, period) -&gt; Attribution</code>",
+      config:"Report schedule, benchmark selection (Nifty 50/500).",
+      err:"Insufficient history for a metric (e.g. Sharpe on &lt;4 weeks of data) returns an explicit 'insufficient data' result, never a misleading number computed on too little.",
+      fail:"N/A to trading operations — read-only, no downstream trading dependency, so a failure here never blocks a trading cycle.",
+      test:"Golden-value tests against the audit's independently-verified CAPM/factor numbers (§8) as the reference case." },
+    {n:"12", id:"validation", purpose:"Backtest engine, walk-forward (k-fold/purged), cross-validation, bias detectors, statistical testing, benchmarking.",
+      why:"Audit: real but thin (single train/test split, no k-fold; survivorship bias confirmed present and unfixed). This module formalizes the one-off '(AI) Determinism Audit'/'(AI) Research Evidence Report' manual process into repeatable, CI-runnable checks.",
+      resp:"Run a strategy over historical data with strict point-in-time discipline; partition via purged/embargoed k-fold, not a single split; run the bias-detector suite (look-ahead, PIT-universe violation, survivorship) as part of every backtest, not as a separate manual pass.",
+      io:"In: <code>Strategy</code>, <code>data</code> (point-in-time), fold config. Out: per-fold performance, aggregate statistics, bias-detector pass/fail report.",
+      deps:"quantos_core.strategies, quantos_core.data, quantos_core.analytics (metrics).",
+      iface:"<code>backtest(strategy, period) -&gt; BacktestResult</code> · <code>walk_forward(strategy, folds) -&gt; WalkForwardResult</code> · <code>detect_bias(strategy, result) -&gt; BiasReport</code>",
+      config:"Fold count/embargo width, which bias detectors are mandatory-pass vs. advisory.",
+      err:"A bias detector failing is a hard error for the backtest run, not a warning buried in a report — this is what would have caught F9 automatically instead of via a manual audit.",
+      fail:"N/A to live trading (offline-only module) — a validation-engine bug can't affect a running trading service, by dependency direction (§3).",
+      test:"Mutation testing: deliberately reintroduce the fixed look-ahead bug (<code>momentum_backtest.py</code>'s pre-fix same-day-fill logic) and assert the detector catches it." },
+    {n:"13", id:"monitoring", purpose:"Metrics, health checks, alerting client, diagnostic reports.",
+      why:"Confirmed zero Telegram/Slack/SMTP/webhook integration anywhere. This is the module that turns 'someone has to open a log file' into 'the system says something's wrong.'",
+      resp:"Expose <code>/health</code>/<code>/ready</code> per service; collect counters/gauges (orders placed, rejections, data staleness, kill-switch state); route alerts through <code>AlertSink</code> (Telegram first).",
+      io:"In: health/metric signals from every other module. Out: alerts, a metrics endpoint, diagnostic snapshot reports.",
+      deps:"None upward — every other module depends on (emits to) <code>monitoring</code>, not the reverse, so a monitoring bug can never block a trading decision.",
+      iface:"<code>emit_metric(name, value, tags)</code> · <code>alert(severity, message)</code> · <code>health() -&gt; HealthStatus</code> per service.",
+      config:"Alert channel credentials (secrets store), alert severity routing.",
+      err:"Alert delivery failure itself falls back to a local file write, so a Telegram outage never means a silent, unrecorded failure.",
+      fail:"Monitoring outage degrades observability, never trading correctness — by the dependency-direction rule above.",
+      test:"Integration: a simulated failure in any other module provably produces exactly one alert within the SLA (§13 success criteria: 1 minute)." },
+    {n:"14", id:"config", purpose:"Layered, typed, validated configuration loading — one source of truth for every parameter.",
+      why:"F8 — <code>TOP_N</code>, <code>STOP_LOSS_PCT</code>, <code>TREND_MA_DAYS</code> etc. duplicated as module-level constants across <code>momentum_backtest.py</code> and <code>paper_trader.py</code> with nothing enforcing they match.",
+      resp:"Load <code>base.yaml</code> → environment overlay (dev/paper/live) → env vars (secrets references only) → validate against a schema (pydantic) → produce one immutable config object, once, at process start.",
+      io:"In: YAML files, environment variables. Out: a single typed, validated config object, injected into every service at startup.",
+      deps:"None within quantos_core — config is a leaf every other module depends on.",
+      iface:"<code>load_config(env: str) -&gt; QuantOSConfig</code> — called exactly once per process, never re-read mid-run.",
+      config:"(itself) — schema-validated, so a typo'd key fails fast at startup, not silently at 3pm on a rebalance day.",
+      err:"Invalid/missing required config → process refuses to start, loud failure at boot, never a runtime surprise.",
+      fail:"N/A — config loading precedes everything else; if it fails, nothing else runs, which is the correct behavior.",
+      test:"Schema validation tests for every required key; a missing key is a caught test failure before it's a production incident." },
+    {n:"15", id:"storage", purpose:"Persistence layer: repositories over SQLite/Postgres (state, orders, trades) and Parquet (historical OHLCV).",
+      why:"Today, state is scattered flat files with no schema — <code>paper_state.json</code>, multiple CSVs, and a confirmed orphaned duplicate <code>paper_state.json</code> found sitting unused in the sibling repo's <code>data/</code> folder since day one.",
+      resp:"Give every other module one transactional place to read/write portfolio state, order/trade journals, PIT data snapshots, kill-switch state, and experiment run manifests.",
+      io:"In: domain objects (<code>PortfolioState</code>, <code>Order</code>, <code>Fill</code>). Out: the same, on read, with transactional guarantees.",
+      deps:"A concrete DB driver (SQLite locally, Postgres if/when concurrent writers appear — explicit upgrade trigger, not default).",
+      iface:"<code>Repository[T]: get(id) -&gt; T · save(entity) · query(filter) -&gt; list[T]</code>, one repository per aggregate (portfolio, orders, trades, kill-switch).",
+      config:"Connection string (secrets store), which backend (SQLite vs Postgres) per environment.",
+      err:"Write failure → transaction rolled back, caller sees a typed <code>StorageError</code>, never a partially-written state.",
+      fail:"DB unavailable → dependent modules fail closed (see <code>risk</code>'s explicit fail-closed rule) rather than operate on stale in-memory guesses.",
+      test:"Transaction-rollback test: simulated mid-write failure leaves state exactly as it was before the write." },
+    {n:"16", id:"services", purpose:"Thin, deployable process entry points — the only things actually running in production.",
+      why:"Today 'the scheduler' is a 197-line PowerShell script directly invoking <code>.py</code> files by hardcoded path with zero process supervision. Services replace that with supervised, independently-restartable processes.",
+      resp:"Wire config + storage + adapters via dependency injection at startup; run one module's orchestration on a schedule or as a daemon; expose health endpoints; nothing else — no business logic lives here.",
+      io:"In: config, CLI/schedule trigger. Out: whatever the wrapped module produces (delegated entirely).",
+      deps:"quantos_core (the module it wraps) + concrete adapter choices for its environment.",
+      iface:"Each service is a single <code>main()</code> that composes: <code>config = load_config(env); container = wire(config); container.run()</code>.",
+      config:"Environment selection, schedule/cron expression.",
+      err:"Uncaught exception in a service → process exits non-zero, supervisor restarts it, alert fires — mirrors the audit-approved fail-loud pattern already added to <code>run_daily_traders.ps1</code> on 2026-07-13, generalized to every service.",
+      fail:"Crash → auto-restart with backoff; repeated crash-loop → alert and stop auto-restarting (avoid infinite crash-loop masking a real problem).",
+      test:"Smoke test: service starts, passes health check, shuts down cleanly on signal." },
+    {n:"17", id:"api", purpose:"Thin, read-mostly internal REST/RPC layer exposing system state to the dashboard and operator tooling.",
+      why:"Doesn't exist today — the only way to see system state is to read a CSV or a printed console line. Deliberately thin: no public exposure, no write-heavy surface, matches the project's actual single-operator scale.",
+      resp:"Serve positions, P&amp;L, risk status, kill-switch state, recent alerts — read endpoints only, plus one explicit, audited kill-switch-engage write endpoint for manual operator control.",
+      io:"In: HTTP requests (local network only). Out: JSON views of <code>storage</code>/<code>monitoring</code> state.",
+      deps:"quantos_core.storage, quantos_core.monitoring, quantos_core.risk (for the kill-switch endpoint) — read-only except that one control.",
+      iface:"<code>GET /positions</code> · <code>GET /risk/status</code> · <code>GET /alerts/recent</code> · <code>POST /risk/kill-switch</code> (authenticated, logged, alerts on use).",
+      config:"Bind address (local-only by default — no public exposure without an explicit, separately-reviewed decision), auth token.",
+      err:"Any internal error → 500 with a generic message, full detail only in server-side logs — never leak internals in a response, even on a local-only API.",
+      fail:"API outage never affects trading — <code>services</code> don't depend on <code>api</code>, only the reverse.",
+      test:"Contract tests per endpoint; auth-required test on the kill-switch write path." },
+    {n:"18", id:"dashboard", purpose:"Read-only observability UI over <code>api</code>.",
+      why:"Doesn't exist today (confirmed: no Streamlit/Flask/Dash app in project code). Deliberately built last — a dashboard before there's real telemetry (monitoring, risk, analytics) to show would itself be the kind of premature complexity this brief warns against.",
+      resp:"Visualize positions, P&amp;L, risk status, alert history — nothing this module does is load-bearing for trading correctness.",
+      io:"In: <code>api</code> responses. Out: rendered pages, no writes beyond the one kill-switch control surfaced from <code>api</code>.",
+      deps:"quantos_core.api only — never talks to storage/brokers directly.",
+      iface:"Standard web app — no internal API of its own beyond what <code>api</code> already exposes.",
+      config:"Which <code>api</code> host to point at.",
+      err:"A dashboard error is cosmetic by construction — it cannot affect any running trading service.",
+      fail:"N/A — read-only, downstream of everything, upstream of nothing.",
+      test:"Visual/E2E smoke test against a fixture <code>api</code> response." },
+    {n:"19", id:"experiments", purpose:"Versioned output of the <code>research</code> module — dated reports, notebooks, result artifacts.",
+      why:"Today, 18 dated markdown audit/research docs sit in the same flat folder as the production strategy scripts. Separating output from logic is what stops a research finding from becoming an unreviewed production change.",
+      resp:"Store immutable, dated research output, referenced by ID from any future decision (an ADR, a strategy version bump) — never imported by <code>quantos_core</code> or any <code>service</code>.",
+      io:"In: <code>research</code> module output. Out: nothing — this is a leaf, terminal node in the dependency graph.",
+      deps:"None. Nothing in quantos_core or services may import from <code>experiments</code> — enforced by the CI import-linter rule in §3.",
+      iface:"Filesystem convention: <code>experiments/YYYY-MM-DD-slug/</code>, a manifest.yaml (question, method, findings, git SHA of the code that produced it).",
+      config:"None — this is data, not a running system.",
+      err:"N/A — not a running system.",
+      fail:"N/A.",
+      test:"CI check: nothing under <code>quantos_core/</code> or <code>services/</code> imports from <code>experiments/</code> (import-linter rule)." },
+    {n:"20", id:"tests", purpose:"The full test suite — unit, integration, regression, property, chaos — mirroring <code>quantos_core</code>'s structure.",
+      why:"Confirmed zero pytest/unittest anywhere in either codebase; the 5 existing <code>--selftest</code> functions are real but manually gated, covering 5 of ~22 modules. Testing was the audit's lowest-scoring engineering dimension (3/10 in the DRS).",
+      resp:"Every layer in §7, wired into CI for the PR-blocking subset, scheduled for chaos/stress.",
+      io:"In: quantos_core modules under test. Out: pass/fail, coverage reports.",
+      deps:"Test-only dependencies (pytest, hypothesis for property tests, a cassette library for adapter integration tests) — never a runtime dependency of quantos_core itself.",
+      iface:"Standard pytest discovery, one test module per quantos_core module, mirrored path structure.",
+      config:"Fixture/cassette locations, coverage threshold enforced in CI.",
+      err:"A flaky test is treated as a bug in the test (or the code's determinism), never silenced with a retry-until-pass loop — determinism is a first-class product requirement here, not just a testing nicety.",
+      fail:"N/A — tests don't run in production.",
+      test:"(meta) Mutation testing on the domain core periodically, to catch tests that pass without actually asserting anything meaningful." },
+    {n:"21", id:"tools", purpose:"One-off operational scripts — manual backfills, data migrations, ad hoc queries.",
+      why:"Today, <code>download_data.py</code>/<code>fetch_universe.py</code> are ambiguously both 'one-off setup scripts' and 'things the daily pipeline implicitly depends on.' This module resolves that ambiguity explicitly.",
+      resp:"Run manually, by an operator, for a specific one-time need (e.g. backfill a new ticker's history, migrate a schema). Never scheduled, never imported by a <code>service</code>.",
+      io:"In: operator CLI invocation. Out: direct writes to <code>storage</code>/<code>data</code>, logged.",
+      deps:"May import quantos_core freely (it's a consumer, like <code>research</code>) — but nothing in quantos_core or services may import <code>tools</code>, enforced the same way as <code>experiments</code>.",
+      iface:"CLI scripts, one per operational task, self-documenting <code>--help</code>.",
+      config:"Whatever the specific tool needs, passed via CLI flags — not baked into shared config, since these are exceptional, not steady-state.",
+      err:"Fails loudly to the operator's terminal — no silent partial-completion; a destructive tool (e.g. a migration) requires an explicit confirmation flag.",
+      fail:"N/A — not a running service.",
+      test:"Each tool gets a smoke test against a fixture, but not the full §7 pyramid — proportionate to one-off, operator-supervised usage." }
+  ];
+
+  var list = document.getElementById('modlist');
+  var html = modules.map(function(m){
+    return '<details class="mod"><summary><span class="modnum">'+m.n+'</span><span class="modname">'+m.id+'</span><span class="modpurpose">'+m.purpose+'</span></summary>'+
+      '<div class="mod-body"><div class="why"><strong>Why this module exists:</strong> '+m.why+'</div>'+
+      '<dl>'+
+      '<dt>Responsibilities</dt><dd>'+m.resp+'</dd>'+
+      '<dt>Inputs / Outputs</dt><dd>'+m.io+'</dd>'+
+      '<dt>Dependencies</dt><dd>'+m.deps+'</dd>'+
+      '<dt>Interface</dt><dd>'+m.iface+'</dd>'+
+      '<dt>Configuration</dt><dd>'+m.config+'</dd>'+
+      '<dt>Error handling</dt><dd>'+m.err+'</dd>'+
+      '<dt>Failure &amp; recovery</dt><dd>'+m.fail+'</dd>'+
+      '<dt>Testing</dt><dd>'+m.test+'</dd>'+
+      '</dl></div></details>';
+  }).join('');
+  list.innerHTML = html;
+})();
+
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  if(!('IntersectionObserver' in window)) return;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      var idx = sections.indexOf(e.target);
+      if(idx === -1) return;
+      if(e.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('active'); });
+        links[idx].classList.add('active');
+      }
+    });
+  }, {rootMargin:'-10% 0px -75% 0px'});
+  sections.forEach(function(s){ if(s) io.observe(s); });
+})();
+</script>
