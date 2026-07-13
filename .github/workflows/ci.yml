@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies (from lockfile)
+        run: pip install -r requirements-lock.txt
+
+      - name: ruff check (lint)
+        run: ruff check .
+
+      - name: ruff format --check
+        run: ruff format --check .
+
+      - name: mypy
+        # Informational, not blocking: 7 pre-existing type errors in the
+        # frozen legacy scripts (momentum_backtest.py, paper_trader.py) are
+        # documented, tracked Phase 1 work -- see pyproject.toml's
+        # [tool.mypy] comment. Tightened to blocking once quantos_core
+        # exists and is typed from day one.
+        run: mypy download_data.py factor_attribution.py fetch_universe.py momentum_backtest.py paper_trader.py transaction_costs.py || true
+
+      - name: pytest (offline subset) with coverage
+        run: |
+          coverage run -m pytest -m "not network"
+          coverage report -m
+
+      - name: Determinism verification (3x)
+        run: python tools/verify_determinism.py 3
+
+      - name: Regenerate inventory (must match committed INVENTORY.md)
+        run: |
+          python tools/generate_inventory.py
+          git diff --exit-code INVENTORY.md
+
+  network-selftest:
+    runs-on: ubuntu-latest
+    # Separate job: momentum_backtest.py --selftest makes one real call to
+    # Yahoo Finance (test_regime_cache_reproducibility). Isolated so a
+    # transient network/provider failure doesn't block the offline suite
+    # above from reporting a genuine PASS.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies (from lockfile)
+        run: pip install -r requirements-lock.txt
+
+      - name: pytest -m network
+        run: pytest -m network -o addopts=""

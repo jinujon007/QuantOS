@@ -1,0 +1,658 @@
+<title>QuantOS Independent Audit — 2026-07-13</title>
+<style>
+:root{
+  --bg:#f6f4ef; --surface:#ffffff; --surface-2:#efece4;
+  --ink:#1b1a17; --ink-2:#55534c; --muted:#86837a;
+  --border:rgba(27,26,23,0.12); --border-strong:rgba(27,26,23,0.22);
+  --accent:#a3691f; --accent-weak:rgba(163,105,31,0.12); --accent-weak-2:rgba(163,105,31,0.28);
+  --good:#0ca30c; --warning:#c98500; --serious:#ec835a; --critical:#d03b3b;
+  --l0:#b3261e; --l1:#c65a3a; --l2:#c9812f; --l3:#b89b2e; --l4:#6f9c3e; --l5:#2f8f5b;
+  --shadow: 0 1px 2px rgba(27,26,23,0.06), 0 8px 24px -12px rgba(27,26,23,0.18);
+  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#100f0d; --surface:#171613; --surface-2:#1e1c19;
+    --ink:#f2efe8; --ink-2:#c7c3b7; --muted:#8b877c;
+    --border:rgba(242,239,232,0.12); --border-strong:rgba(242,239,232,0.22);
+    --accent:#e3a55c; --accent-weak:rgba(227,165,92,0.14); --accent-weak-2:rgba(227,165,92,0.32);
+    --good:#3fc23f; --warning:#fab219; --serious:#ff9d75; --critical:#ff6b6b;
+    --l0:#e05a52; --l1:#e08256; --l2:#e0a95a; --l3:#cdbb5f; --l4:#8fc26a; --l5:#4fbd85;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f0d; --surface:#171613; --surface-2:#1e1c19;
+  --ink:#f2efe8; --ink-2:#c7c3b7; --muted:#8b877c;
+  --border:rgba(242,239,232,0.12); --border-strong:rgba(242,239,232,0.22);
+  --accent:#e3a55c; --accent-weak:rgba(227,165,92,0.14); --accent-weak-2:rgba(227,165,92,0.32);
+  --good:#3fc23f; --warning:#fab219; --serious:#ff9d75; --critical:#ff6b6b;
+  --l0:#e05a52; --l1:#e08256; --l2:#e0a95a; --l3:#cdbb5f; --l4:#8fc26a; --l5:#4fbd85;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+}
+:root[data-theme="light"]{
+  --bg:#f6f4ef; --surface:#ffffff; --surface-2:#efece4;
+  --ink:#1b1a17; --ink-2:#55534c; --muted:#86837a;
+  --border:rgba(27,26,23,0.12); --border-strong:rgba(27,26,23,0.22);
+  --accent:#a3691f; --accent-weak:rgba(163,105,31,0.12); --accent-weak-2:rgba(163,105,31,0.28);
+  --good:#0ca30c; --warning:#c98500; --serious:#ec835a; --critical:#d03b3b;
+  --l0:#b3261e; --l1:#c65a3a; --l2:#c9812f; --l3:#b89b2e; --l4:#6f9c3e; --l5:#2f8f5b;
+  --shadow: 0 1px 2px rgba(27,26,23,0.06), 0 8px 24px -12px rgba(27,26,23,0.18);
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;} }
+
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15.5px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+::selection{ background:var(--accent-weak-2); }
+
+.shell{ display:grid; grid-template-columns:260px minmax(0,1fr); min-height:100vh; }
+@media (max-width:960px){ .shell{ grid-template-columns:1fr; } .toc{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--border); } }
+
+.toc{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:28px 18px 40px; border-right:1px solid var(--border); background:var(--surface);
+}
+.toc-brand{ font-family:var(--serif); font-size:1.02rem; letter-spacing:0.01em; margin:0 0 2px; }
+.toc-brand small{ display:block; font-family:var(--mono); font-size:0.68rem; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; margin-top:4px; }
+.toc hr{ border:none; border-top:1px solid var(--border); margin:16px 0; }
+.toc ol{ list-style:none; margin:0; padding:0; counter-reset:sec; }
+.toc li{ counter-increment:sec; }
+.toc a{
+  display:flex; gap:10px; align-items:baseline; text-decoration:none; color:var(--ink-2);
+  font-size:0.82rem; padding:6px 8px; border-radius:5px; line-height:1.35;
+}
+.toc a::before{ content: counter(sec, decimal-leading-zero); font-family:var(--mono); font-size:0.7rem; color:var(--muted); flex:0 0 auto; }
+.toc a:hover, .toc a:focus-visible{ background:var(--accent-weak); color:var(--ink); }
+.toc a.active{ background:var(--accent-weak-2); color:var(--ink); font-weight:600; }
+.toc a:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+main{ padding:0; min-width:0; }
+.hero{
+  padding:44px clamp(20px,4vw,56px) 34px; border-bottom:1px solid var(--border);
+  background:
+    radial-gradient(1200px 420px at 85% -10%, var(--accent-weak), transparent 60%),
+    var(--surface);
+}
+.hero-eyebrow{ font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem; color:var(--accent); margin:0 0 10px; }
+.hero h1{ font-family:var(--serif); font-weight:600; font-size:clamp(1.6rem,3vw,2.3rem); margin:0 0 10px; text-wrap:balance; letter-spacing:0.002em; }
+.hero p.lead{ max-width:66ch; color:var(--ink-2); font-size:1.02rem; margin:0 0 24px; }
+
+.verdict-row{ display:flex; flex-wrap:wrap; gap:14px; }
+.stat{
+  background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+  padding:14px 18px; min-width:150px; box-shadow:var(--shadow);
+}
+.stat .k{ font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+.stat .v{ font-family:var(--serif); font-size:1.7rem; margin-top:2px; font-variant-numeric:tabular-nums; }
+.stat .v small{ font-family:var(--sans); font-size:0.95rem; color:var(--muted); font-weight:400; }
+.stat.warn .v{ color:var(--serious); }
+.stat.crit .v{ color:var(--critical); }
+.stat.good .v{ color:var(--good); }
+
+section{ padding:40px clamp(20px,4vw,56px); border-bottom:1px solid var(--border); max-width:980px; }
+section:last-of-type{ border-bottom:none; }
+.sec-num{ font-family:var(--mono); color:var(--accent); font-size:0.78rem; letter-spacing:0.08em; }
+h2{ font-family:var(--serif); font-weight:600; font-size:1.5rem; margin:2px 0 18px; text-wrap:balance; }
+h3{ font-family:var(--serif); font-weight:600; font-size:1.12rem; margin:26px 0 10px; }
+p{ margin:0 0 14px; max-width:70ch; color:var(--ink); }
+p.muted{ color:var(--ink-2); font-size:0.94rem; }
+ul,ol.plain{ margin:0 0 14px; padding-left:1.3em; }
+li{ margin-bottom:6px; }
+strong{ font-weight:650; }
+code{ font-family:var(--mono); font-size:0.88em; background:var(--surface-2); padding:0.1em 0.4em; border-radius:4px; border:1px solid var(--border); }
+
+.callout{
+  border:1px solid var(--border-strong); border-left:3px solid var(--accent);
+  background:var(--surface-2); border-radius:0 8px 8px 0; padding:14px 18px; margin:16px 0;
+  font-size:0.93rem; color:var(--ink-2);
+}
+.callout strong{ color:var(--ink); }
+.callout.crit{ border-left-color:var(--critical); }
+.callout.warn{ border-left-color:var(--serious); }
+
+.table-wrap{ overflow-x:auto; margin:8px 0 20px; border:1px solid var(--border); border-radius:10px; background:var(--surface); box-shadow:var(--shadow); }
+table{ border-collapse:collapse; width:100%; min-width:560px; font-size:0.87rem; }
+th,td{ text-align:left; padding:9px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
+thead th{ font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); background:var(--surface-2); position:sticky; top:0; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--accent-weak); }
+td.num, th.num{ font-variant-numeric:tabular-nums; font-family:var(--mono); font-size:0.85rem; }
+td.evid{ color:var(--ink-2); font-size:0.85rem; max-width:34ch; }
+td.evid code{ font-size:0.82em; }
+
+.chip{ display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+.chip::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.chip.l0{ color:var(--l0); background:color-mix(in srgb, var(--l0) 14%, transparent); }
+.chip.l1{ color:var(--l1); background:color-mix(in srgb, var(--l1) 14%, transparent); }
+.chip.l2{ color:var(--l2); background:color-mix(in srgb, var(--l2) 14%, transparent); }
+.chip.l3{ color:var(--l3); background:color-mix(in srgb, var(--l3) 16%, transparent); }
+.chip.l4{ color:var(--l4); background:color-mix(in srgb, var(--l4) 16%, transparent); }
+.chip.l5{ color:var(--l5); background:color-mix(in srgb, var(--l5) 16%, transparent); }
+.chip.good{ color:var(--good); background:color-mix(in srgb, var(--good) 14%, transparent); }
+.chip.serious{ color:var(--serious); background:color-mix(in srgb, var(--serious) 16%, transparent); }
+.chip.critical{ color:var(--critical); background:color-mix(in srgb, var(--critical) 14%, transparent); }
+
+.legend-row{ display:flex; flex-wrap:wrap; gap:8px 16px; margin:6px 0 22px; font-size:0.78rem; color:var(--muted); align-items:center; }
+.legend-row .chip{ font-size:0.7rem; }
+
+.bar-list{ display:flex; flex-direction:column; gap:10px; margin:10px 0 22px; }
+.bar-row{ display:grid; grid-template-columns:150px 1fr 46px; align-items:center; gap:12px; font-size:0.86rem; }
+.bar-row .label{ color:var(--ink-2); }
+.bar-track{ height:9px; border-radius:5px; background:var(--surface-2); border:1px solid var(--border); overflow:hidden; }
+.bar-fill{ height:100%; background:linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--l4))); border-radius:5px 0 0 5px; }
+.bar-row .pct{ font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-2); }
+
+.grid-2{ display:grid; grid-template-columns:1.1fr 0.9fr; gap:28px; align-items:start; }
+@media (max-width:760px){ .grid-2{ grid-template-columns:1fr; } }
+
+.radar-card{ border:1px solid var(--border); background:var(--surface); border-radius:12px; padding:18px; box-shadow:var(--shadow); }
+.radar-card .cap{ font-family:var(--mono); font-size:0.7rem; color:var(--muted); text-align:center; margin-top:6px; }
+canvas{ display:block; width:100%; height:auto; }
+
+.drs-total{
+  display:flex; align-items:baseline; gap:14px; padding:18px 20px; border-radius:10px;
+  background:var(--surface-2); border:1px solid var(--border-strong); margin:6px 0 20px;
+}
+.drs-total .n{ font-family:var(--serif); font-size:2.6rem; color:var(--accent); font-variant-numeric:tabular-nums; }
+.drs-total .of{ color:var(--muted); font-family:var(--mono); }
+.drs-total .tier{ margin-left:auto; text-align:right; }
+.drs-total .tier .k{ font-family:var(--mono); font-size:0.65rem; text-transform:uppercase; color:var(--muted); letter-spacing:0.06em; }
+.drs-total .tier .v{ font-weight:650; }
+
+.qa-grid{ display:grid; grid-template-columns:1fr; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin:10px 0 22px; }
+.qa-row{ display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; background:var(--surface); padding:11px 16px; }
+.qa-row .q{ font-size:0.9rem; }
+.qa-row .q small{ display:block; color:var(--muted); font-size:0.78rem; margin-top:2px; }
+
+.crit-path{ list-style:none; margin:10px 0 20px; padding:0; counter-reset:cp; display:flex; flex-direction:column; gap:0; }
+.crit-path li{ counter-increment:cp; position:relative; padding:14px 0 14px 34px; border-left:2px solid var(--border-strong); margin-left:9px; }
+.crit-path li::before{
+  content: counter(cp); position:absolute; left:-11px; top:12px; width:20px; height:20px; border-radius:50%;
+  background:var(--surface); border:2px solid var(--accent); color:var(--accent); font-family:var(--mono); font-size:0.68rem;
+  display:flex; align-items:center; justify-content:center; font-weight:700;
+}
+.crit-path li:last-child{ border-left-color:transparent; }
+.crit-path .t{ font-weight:650; margin-bottom:3px; }
+.crit-path .d{ color:var(--ink-2); font-size:0.88rem; max-width:62ch; }
+
+.milestone-card{
+  border:1px solid var(--border-strong); border-radius:12px; padding:22px 24px; background:
+    linear-gradient(180deg, var(--accent-weak), transparent 60%), var(--surface); box-shadow:var(--shadow);
+}
+.milestone-card .tag{ font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); }
+.milestone-card h3{ margin:6px 0 10px; font-size:1.25rem; }
+
+footer{ padding:30px clamp(20px,4vw,56px) 60px; color:var(--muted); font-size:0.8rem; font-family:var(--mono); }
+</style>
+
+<div class="shell">
+  <nav class="toc" id="toc">
+    <p class="toc-brand">QuantOS Audit<small>Independent review &middot; 2026-07-13</small></p>
+    <hr>
+    <ol>
+      <li><a href="#s1">Repository Overview</a></li>
+      <li><a href="#s2">Architecture Map</a></li>
+      <li><a href="#s3">Subsystem Inventory</a></li>
+      <li><a href="#s4">Development Phase</a></li>
+      <li><a href="#s5">Completion %</a></li>
+      <li><a href="#s6">Maturity Table</a></li>
+      <li><a href="#s7">Risk Assessment</a></li>
+      <li><a href="#s8">Research Assessment</a></li>
+      <li><a href="#s9">Engineering Assessment</a></li>
+      <li><a href="#s10">Operational Assessment</a></li>
+      <li><a href="#s11">Production Readiness</a></li>
+      <li><a href="#s12">Development Readiness Score</a></li>
+      <li><a href="#s13">Critical Path</a></li>
+      <li><a href="#s14">Next Milestone</a></li>
+      <li><a href="#s15">Executive Summary</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <p class="hero-eyebrow">Independent Software Audit Committee &middot; Verification-Only, No Implementation</p>
+      <h1>QuantOS is not a platform. It's one well-researched solo strategy, wearing a platform's name.</h1>
+      <p class="lead">Two disconnected Python codebases (1,647 LOC + 4,513 LOC), zero shared library, zero git history, zero broker connectivity, ₹0 live capital. The research discipline on the flagship strategy is genuinely above retail-hobbyist standard — the software around it is pre-infrastructure. Every claim below is cited to a file and line.</p>
+      <div class="verdict-row">
+        <div class="stat"><div class="k">Phase</div><div class="v" style="font-size:1.25rem">7 <small>of 14 — Validation Framework</small></div></div>
+        <div class="stat crit"><div class="k">DRS (this audit)</div><div class="v">53<small> / 100</small></div></div>
+        <div class="stat"><div class="k">Overall completion</div><div class="v">27<small>%</small></div></div>
+        <div class="stat crit"><div class="k">Live capital deployed</div><div class="v">₹0</div></div>
+        <div class="stat warn"><div class="k">Git repository</div><div class="v" style="font-size:1.15rem">None found</div></div>
+      </div>
+    </div>
+
+    <section id="s1">
+      <p class="sec-num">01 / 15</p>
+      <h2>Repository Overview</h2>
+      <p>There is no single "QuantOS" repository. There are three artifacts under <code>02 Self/Projects/</code>, none version-controlled, connected only by a hardcoded-path PowerShell scheduler:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Artifact</th><th>Role</th><th class="num">LOC</th><th>Files</th><th>Git</th></tr></thead>
+        <tbody>
+          <tr><td><code>AlgoTrader/</code></td><td>Momentum strategy — research, backtest, paper trader, cost model</td><td class="num">1,647</td><td class="num">6 .py</td><td>None</td></tr>
+          <tr><td><code>My_terminal/trading_backtests/</code></td><td>16-strategy research suite + 3 promoted paper traders</td><td class="num">4,513+</td><td class="num">25 .py</td><td>None</td></tr>
+          <tr><td><code>run_daily_traders.ps1</code></td><td>Orphan scheduler at <code>Projects/</code> root, hardcoded paths into both above</td><td class="num">197</td><td class="num">1 .ps1</td><td>None</td></tr>
+        </tbody>
+      </table></div>
+      <p>No <code>requirements.txt</code> exists for AlgoTrader at all — its dependencies (yfinance, pandas, numpy) are pinned nowhere. <code>trading_backtests/requirements.txt</code> pins 13 packages with no lockfile. No Dockerfile, no CI config, no cloud target, anywhere in either tree. Windows Task Scheduler is presumed to trigger the daily run (log timestamps cluster near 15:35) but no registration artifact — no exported <code>.xml</code>, no setup script — was found to confirm it.</p>
+      <div class="callout"><strong>What's genuinely strong:</strong> documentation. 22 markdown files in AlgoTrader alone (CONTEXT.md, PRD.md, EXECUTION_PLAN.md, 18 dated audit/research reports), plus DEVLOG/CHANGELOG/17 TASK docs in the sibling repo. For a solo, non-coder-operated project this is unusually disciplined — see §9.</div>
+    </section>
+
+    <section id="s2">
+      <p class="sec-num">02 / 15</p>
+      <h2>Architecture Map</h2>
+      <h3>Directory structure (trading-relevant paths only)</h3>
+      <div class="table-wrap"><table>
+        <tbody style="font-family:var(--mono); font-size:0.82rem;">
+        <tr><td colspan="2"><strong>AlgoTrader/</strong></td></tr>
+        <tr><td style="padding-left:24px">fetch_universe.py</td><td class="evid">NSE current Nifty 500 scrape &rarr; nifty500_universe.csv (single snapshot, no history)</td></tr>
+        <tr><td style="padding-left:24px">download_data.py</td><td class="evid">yfinance OHLCV &rarr; data/cache/*.csv, 2018&ndash;2024, 459 tickers cached</td></tr>
+        <tr><td style="padding-left:24px">transaction_costs.py</td><td class="evid">Real Zerodha CNC cost model: STT/stamp/exchange/SEBI/GST/DP</td></tr>
+        <tr><td style="padding-left:24px">momentum_backtest.py</td><td class="evid">615 LOC. Backtest + walk-forward + regime filter + 3 gated --selftest asserts</td></tr>
+        <tr><td style="padding-left:24px">paper_trader.py</td><td class="evid">390 LOC. Daily monitor, T+1 fill queue, 1 gated --selftest</td></tr>
+        <tr><td style="padding-left:24px">factor_attribution.py</td><td class="evid">257 LOC. CAPM / size-factor regression report generator</td></tr>
+        <tr><td style="padding-left:24px">data/</td><td class="evid">cache/ (459 CSV), cache_index/ (regime cache), cache_factors/, results/, paper_state.json, journal.md <em>(abandoned since 2026-06-09)</em></td></tr>
+        <tr><td colspan="2" style="padding-top:14px"><strong>My_terminal/trading_backtests/</strong></td></tr>
+        <tr><td style="padding-left:24px">strategies/01&ndash;16_*.py</td><td class="evid">16 independent scripts, 4,513 LOC, zero shared base class</td></tr>
+        <tr><td style="padding-left:24px">utils/data_loader.py</td><td class="evid"><code>get_nifty500_universe()</code> = 95 hardcoded tickers, not a fetch (see §7, F9)</td></tr>
+        <tr><td style="padding-left:24px">utils/metrics.py</td><td class="evid">94 LOC. Pure stats (CAGR/Sharpe/Sortino/MaxDD) &mdash; no cost or risk logic</td></tr>
+        <tr><td style="padding-left:24px">quality / factor_timing / weekly_options _paper_trader.py</td><td class="evid">3 promoted live paper traders, each own flat cost constant (0.003&ndash;0.005), no shared cost module</td></tr>
+        <tr><td style="padding-left:24px">portfolio_tracker.py</td><td class="evid">352 LOC. P&amp;L display + advisory-only text recommendation. No automated action.</td></tr>
+        <tr><td style="padding-left:24px">tune_all.py</td><td class="evid">Grid-search parameter sweep, 6 of 16 strategies tunable, cache-direct (no network)</td></tr>
+        <tr><td colspan="2" style="padding-top:14px"><strong>Projects/</strong></td></tr>
+        <tr><td style="padding-left:24px">run_daily_traders.ps1</td><td class="evid">Hardcoded paths into both trees above, 4 strategies @ ~15:35 daily, fail-loud since 2026-07-13</td></tr>
+        <tr><td style="padding-left:24px">trader_logs/</td><td class="evid">24 daily logs since 2026-06-09, with confirmed gaps (§10)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Execution flow</h3>
+      <p class="muted">Manual (or unconfirmed-scheduled) invocation &rarr; <code>run_daily_traders.ps1</code> &rarr; <code>Push-Location</code> into each strategy's directory &rarr; strategy script fetches live prices via <strong>yfinance</strong> &rarr; computes signal (momentum rank / quality score / regime classification / VRP) &rarr; live regime check (uncached, re-fetched every run) &rarr; orders queued, not filled &rarr; next invocation fills queued orders at that day's price (T+1 design) &rarr; trade appended to CSV, state written to JSON &rarr; <code>portfolio_tracker.py</code> aggregates a cross-strategy snapshot. No step in this chain touches a broker API.</p>
+
+      <h3>External integrations</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Integration</th><th>Status</th><th class="evid" style="max-width:none">Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Data provider</td><td><span class="chip serious">Single, free, unofficial</span></td><td class="evid" style="max-width:none"><strong>yfinance</strong> is the only price/fundamentals source in either repo. No paid vendor evaluated or integrated.</td></tr>
+          <tr><td>Universe source</td><td><span class="chip critical">Current-only / fabricated</span></td><td class="evid" style="max-width:none">AlgoTrader: live NSE scrape, current constituents only. Sibling repo: 95 hardcoded tickers (§7, F9).</td></tr>
+          <tr><td>Broker (Zerodha)</td><td><span class="chip critical">Not integrated</span></td><td class="evid" style="max-width:none">Zero API calls anywhere. Docs describe manual order entry only, for a not-yet-reached phase.</td></tr>
+          <tr><td>Broker (Angel One)</td><td><span class="chip critical">Not integrated</span></td><td class="evid" style="max-width:none">Named in docs as the future automation target. No SmartAPI code exists. Compliance checklist 0/7 checked.</td></tr>
+          <tr><td>LLM signal layer</td><td><span class="chip l0">Not started</span></td><td class="evid" style="max-width:none"><code>.env.example</code> has placeholder DeepSeek/OpenRouter/Anthropic keys; nothing in the codebase loads <code>.env</code> (zero <code>dotenv</code>/<code>os.environ</code> hits). Explicitly a non-goal in the PRD.</td></tr>
+          <tr><td>Alerting</td><td><span class="chip critical">None</span></td><td class="evid" style="max-width:none">Zero matches for Telegram/Slack/SMTP/webhook across both codebases.</td></tr>
+          <tr><td>Database</td><td><span class="chip l1">None &mdash; flat files</span></td><td class="evid" style="max-width:none">All state is CSV/JSON on local disk. No SQL/NoSQL engine anywhere.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s3">
+      <p class="sec-num">03 / 15</p>
+      <h2>Subsystem Inventory</h2>
+      <p>24 subsystems assessed. Grouped by how far the platform has actually reached, not by roadmap intent:</p>
+      <ul>
+        <li><strong>Real and evidenced:</strong> data ingestion, strategy engine, signal generation, backtesting engine, walk-forward validation, paper trading, research framework, documentation, logging (partial).</li>
+        <li><strong>Thin or single-purpose:</strong> feature/factor library, universe selection (AlgoTrader half), cross validation, configuration, testing, security, cost model consistency.</li>
+        <li><strong>Effectively absent:</strong> portfolio optimizer, portfolio-level risk engine, execution engine, broker adapters, monitoring, dashboard, experiment tracking, infrastructure, deployment, shared architecture between the two codebases.</li>
+      </ul>
+      <p class="muted">Full evidence per subsystem is in §6. Findings that don't map to a single subsystem — cross-cutting bugs, bias, and process gaps — are in §7.</p>
+    </section>
+
+    <section id="s4">
+      <p class="sec-num">04 / 15</p>
+      <h2>Development Phase</h2>
+      <div class="drs-total"><span class="n">Phase 7</span><span class="of">of 14 &mdash; Validation Framework</span></div>
+      <p>The project's own operating rule, active as of 2026-07-13 (<code>CONTEXT.md:14-36</code>), states plainly where it is: Momentum is frozen pending <strong>13 weekly rebalance observations</strong> under a "Prospective Validation" protocol, currently at <strong>0 of 13</strong>. That is a Phase 7 (Validation Framework) gate, not a Phase 10 (Paper Trading) achievement — paper trading is the delivery mechanism being used to finish validation, not evidence validation is done.</p>
+      <p>It would be generous to call this Phase 10. The paper-trading <em>infrastructure</em> works and has run since 2026-06-09 — real logs, real (virtual) P&amp;L, real bug fixes under load. But Phase 8 (Portfolio Construction) is absent (0/24 subsystem score for portfolio optimizer beyond equal-weight-top-10), and Phase 9 (Execution Engine) is completely unbuilt (0% — zero broker code, confirmed by exhaustive grep in §7). A project doesn't get credit for Phase 10 while Phase 8 and 9 haven't started; it has leapfrogged into live-adjacent operation on validation logic alone, which is exactly what a "paper trading" stage is supposed to let you do safely — but the maturity claim belongs to Phase 7, because that's the open question the current activity exists to answer.</p>
+      <div class="callout warn"><strong>Reality check on evidence quality:</strong> even within Phase 7, the strongest statistical result (full-sample CAPM alpha, p=0.002) lost significance on the only fair post-2021 window tested (p=0.23) &mdash; see §8. The validation phase has not yet produced a clean pass.</div>
+    </section>
+
+    <section id="s5">
+      <p class="sec-num">05 / 15</p>
+      <h2>Completion Percentages</h2>
+      <p class="muted">Independently estimated from code and log evidence, not from the project's own status checkboxes.</p>
+      <div class="bar-list">
+        <div class="bar-row"><span class="label">Overall</span><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><span class="pct">27%</span></div>
+        <div class="bar-row"><span class="label">Documentation</span><div class="bar-track"><div class="bar-fill" style="width:75%"></div></div><span class="pct">75%</span></div>
+        <div class="bar-row"><span class="label">Research</span><div class="bar-track"><div class="bar-fill" style="width:55%"></div></div><span class="pct">55%</span></div>
+        <div class="bar-row"><span class="label">Strategies</span><div class="bar-track"><div class="bar-fill" style="width:45%"></div></div><span class="pct">45%</span></div>
+        <div class="bar-row"><span class="label">Models</span><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><span class="pct">40%</span></div>
+        <div class="bar-row"><span class="label">Validation</span><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><span class="pct">40%</span></div>
+        <div class="bar-row"><span class="label">Data</span><div class="bar-track"><div class="bar-fill" style="width:35%"></div></div><span class="pct">35%</span></div>
+        <div class="bar-row"><span class="label">Automation</span><div class="bar-track"><div class="bar-fill" style="width:30%"></div></div><span class="pct">30%</span></div>
+        <div class="bar-row"><span class="label">Infrastructure</span><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><span class="pct">20%</span></div>
+        <div class="bar-row"><span class="label">Architecture</span><div class="bar-track"><div class="bar-fill" style="width:15%"></div></div><span class="pct">15%</span></div>
+        <div class="bar-row"><span class="label">Testing</span><div class="bar-track"><div class="bar-fill" style="width:15%"></div></div><span class="pct">15%</span></div>
+        <div class="bar-row"><span class="label">Risk</span><div class="bar-track"><div class="bar-fill" style="width:10%"></div></div><span class="pct">10%</span></div>
+        <div class="bar-row"><span class="label">Monitoring</span><div class="bar-track"><div class="bar-fill" style="width:5%"></div></div><span class="pct">5%</span></div>
+        <div class="bar-row"><span class="label">Execution</span><div class="bar-track"><div class="bar-fill" style="width:0%"></div></div><span class="pct">0%</span></div>
+        <div class="bar-row"><span class="label">Deployment</span><div class="bar-track"><div class="bar-fill" style="width:0%"></div></div><span class="pct">0%</span></div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <p class="sec-num">06 / 15</p>
+      <h2>Subsystem Maturity Table</h2>
+      <div class="legend-row">
+        Scale: <span class="chip l0">0 Missing</span><span class="chip l1">1 Skeleton</span><span class="chip l2">2 Prototype</span><span class="chip l3">3 Functional</span><span class="chip l4">4 Prod. Candidate</span><span class="chip l5">5 Institutional</span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Subsystem</th><th>Level</th><th class="evid" style="max-width:none">Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Data ingestion</td><td><span class="chip l3">3</span></td><td class="evid" style="max-width:none">459/504 tickers cached and working; but <code>download_data.py:64</code> has a fully silent <code>except Exception: return pd.DataFrame()</code> with no log at all.</td></tr>
+          <tr><td>Feature / factor library</td><td><span class="chip l2">2</span></td><td class="evid" style="max-width:none"><code>factor_attribution.py</code> is a real but standalone report script, not a reusable module other strategies import.</td></tr>
+          <tr><td>Universe selection</td><td><span class="chip l1">1</span></td><td class="evid" style="max-width:none">AlgoTrader: current-only fetch, no point-in-time. Sibling repo: <code>data_loader.py:57-74</code>, 95 hardcoded tickers incl. 2021-22 IPOs, fabricated, not fetched.</td></tr>
+          <tr><td>Factor library (multi-factor)</td><td><span class="chip l2">2</span></td><td class="evid" style="max-width:none">One-factor and two-factor (size) CAPM tests run manually once; no reusable multi-factor engine.</td></tr>
+          <tr><td>Strategy engine</td><td><span class="chip l3">3</span></td><td class="evid" style="max-width:none">20 strategies total (4+16) run and produce real output; zero shared base class across 16 sibling scripts (confirmed, no <code>class</code> in <code>strategies/*.py</code>).</td></tr>
+          <tr><td>Signal generation</td><td><span class="chip l3">3</span></td><td class="evid" style="max-width:none">Momentum rank, quality score, regime classification, VRP signals all real; T+1 fill and determinism bugs found <em>and</em> fixed with proof.</td></tr>
+          <tr><td>Portfolio optimizer</td><td><span class="chip l1">1</span></td><td class="evid" style="max-width:none">Equal-weight top-N only. No mean-variance, risk-parity, or any real optimizer anywhere.</td></tr>
+          <tr><td>Risk engine (portfolio-level)</td><td><span class="chip l1">1</span></td><td class="evid" style="max-width:none">Per-strategy stop-loss/regime exit is real. Zero cross-strategy exposure, correlation check, or kill switch (grep confirmed zero hits).</td></tr>
+          <tr><td>Execution engine</td><td><span class="chip l1">1</span></td><td class="evid" style="max-width:none">Order-queue/fill mechanics prototyped for simulation (<code>paper_trader.py:150-181</code>). No real order routing exists.</td></tr>
+          <tr><td>Broker adapters</td><td><span class="chip l0">0</span></td><td class="evid" style="max-width:none">Zero matches for kiteconnect/SmartAPI/place_order across both repos.</td></tr>
+          <tr><td>Paper trading</td><td><span class="chip l3">3</span></td><td class="evid" style="max-width:none">Live since 2026-06-09, 24 daily logs, real virtual P&amp;L across 4 strategies &mdash; but confirmed gaps: missing 2026-07-01 log, truncated 2026-06-30 run, late-triggered 2026-07-08 run.</td></tr>
+          <tr><td>Backtesting engine</td><td><span class="chip l4">4</span></td><td class="evid" style="max-width:none"><code>momentum_backtest.py</code> has 3 gated self-check functions with real asserts (<code>:460-581</code>) and a proven no-look-ahead invariant (<code>:316</code>) that runs on every buy, every run.</td></tr>
+          <tr><td>Walk-forward validation</td><td><span class="chip l3">3</span></td><td class="evid" style="max-width:none">Real, extended to the regime-filtered variant 2026-07-13. Single 3yr/3yr split only &mdash; not k-fold or rolling.</td></tr>
+          <tr><td>Cross-validation</td><td><span class="chip l1">1</span></td><td class="evid" style="max-width:none">No purged/embargoed k-fold CV anywhere. Rolling 52-week alpha regression exists but isn't formal CV.</td></tr>
+          <tr><td>Research framework</td><td><span class="chip l3">3</span></td><td class="evid" style="max-width:none">CAPM &rarr; two-factor &rarr; three-factor falsification chain is genuinely rigorous (§8) &mdash; but manual, un-tooled, and applied to 1 of 20 strategies only.</td></tr>
+          <tr><td>Experiment tracking</td><td><span class="chip l0">0</span></td><td class="evid" style="max-width:none">No MLflow/DVC/run manifest. Params duplicated across files with nothing enforcing they match (F8, open).</td></tr>
+          <tr><td>Logging</td><td><span class="chip l2">2</span></td><td class="evid" style="max-width:none">Text logs + recently added <code>[ERROR]</code>/<code>[FAILURE]</code> tags. No structured (JSON) logging, no log levels, no central log store.</td></tr>
+          <tr><td>Monitoring</td><td><span class="chip l0">0</span></td><td class="evid" style="max-width:none">No dashboard, no alerting. Confirmed by grep: zero Telegram/Slack/SMTP/webhook integration.</td></tr>
+          <tr><td>Dashboard</td><td><span class="chip l0">0</span></td><td class="evid" style="max-width:none">No Streamlit/Flask/Dash app in project code (only inside third-party <code>venv/site-packages</code>).</td></tr>
+          <tr><td>Configuration</td><td><span class="chip l1">1</span></td><td class="evid" style="max-width:none">No central config file. Module-level constants duplicated across <code>momentum_backtest.py</code> and <code>paper_trader.py</code>, unenforced.</td></tr>
+          <tr><td>Infrastructure</td><td><span class="chip l1">1</span></td><td class="evid" style="max-width:none">One Windows laptop. No cloud, no containers. Scheduler trigger unconfirmed by any config artifact.</td></tr>
+          <tr><td>Security / secrets</td><td><span class="chip l2">2</span></td><td class="evid" style="max-width:none">No secrets committed (good) &mdash; but nothing has been exercised: <code>.env.example</code> is dead code, no real broker credential path has ever been built or tested.</td></tr>
+          <tr><td>Testing</td><td><span class="chip l2">2</span></td><td class="evid" style="max-width:none">Real gated <code>--selftest</code> asserts on 5 of ~22 modules. Zero coverage on 16 strategy files (4,513 LOC) and <code>utils/*.py</code>. No pytest/unittest anywhere.</td></tr>
+          <tr><td>Documentation</td><td><span class="chip l4">4</span></td><td class="evid" style="max-width:none">22 dated markdown docs in AlgoTrader; DEVLOG/CHANGELOG/17 TASK docs in sibling repo. Strongest subsystem by a wide margin.</td></tr>
+          <tr><td>Deployment</td><td><span class="chip l0">0</span></td><td class="evid" style="max-width:none">No CI/CD, no Docker, no defined target beyond "run on this laptop."</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s7">
+      <p class="sec-num">07 / 15</p>
+      <h2>Risk Assessment</h2>
+      <h3>Critical blockers</h3>
+      <ul>
+        <li><strong>Universe fabrication (F9).</strong> <code>utils/data_loader.py:57-74</code> &mdash; <code>get_nifty500_universe()</code> is a hardcoded 95-ticker list, not an index fetch, including ZOMATO (IPO 2021-11-18), LICI (2022-05-17), DELHIVERY (2022-05-24), PAYTM, IRCTC (2019) &mdash; used as the tradeable universe for backtests starting 2010. This is survivorship bias by construction, not by accident, and it feeds 2 of the 4 live tournament strategies (Quality Factor, Factor Timing).</li>
+        <li><strong>Survivorship bias, no point-in-time membership (F1).</strong> <code>fetch_universe.py:13</code> pulls NSE's <em>current</em> constituent list; <code>momentum_backtest.py</code> backtests 2019&ndash;2024 against that single, current-day snapshot. Every delisted/merged/dropped name is invisible. Confirmed present in code, not merely a documented risk.</li>
+        <li><strong>SEBI compliance status unknown, deadline already passed.</strong> Full enforcement of the Feb 2025 algo-trading circular hit 1 Apr 2026; today is 2026-07-13, over three months past. The compliance checklist in <code>PRD.md:132-154</code> has 0 of 7 items checked. This blocks any live order placement, not just automation.</li>
+        <li><strong>No portfolio-level risk engine.</strong> Four strategies run isolated ₹1L virtual books with no cross-strategy exposure aggregation, correlation check, or kill switch. At go-live, correlated concentrated positions across strategies are invisible to the system by design.</li>
+      </ul>
+      <h3>High-priority</h3>
+      <ul>
+        <li><strong>Cost model inconsistency, sibling repo.</strong> Each of the 3 sibling paper traders hardcodes its own flat cost constant (0.003&ndash;0.005); none imports the accurate <code>transaction_costs.py</code> model AlgoTrader now uses. Paper P&amp;L for 3 of 4 tournament strategies is optimistic relative to real cost.</li>
+        <li><strong>Zero test coverage on the strategy layer.</strong> <code>TASK_FIX_BUGS.md</code> documents 4 confirmed bugs (decimal-threshold, index-vs-value lookup, signal misattribution, options CAGR annualized at 1691%) found only by manual eyeballing. 16 strategy files, 4,513 LOC, have no automated test protecting against recurrence.</li>
+        <li><strong>Confirmed scheduler reliability gaps.</strong> <code>trader_logs/</code>: 2026-07-01 has no log at all (a real miss, not a market-holiday skip); 2026-06-30 truncates mid-run with no failure flag; 2026-07-08 triggered over an hour late. The 2026-07-13 fail-loud fix (flag file, exit code, red console banner) addresses <em>detected</em> errors, not silent scheduler non-execution.</li>
+        <li><strong>Blanket exception handling, still open.</strong> <code>paper_trader.py</code> (check_regime, fetch_current_prices, compute_momentum_scores) and <code>download_data.py:64</code> (fully silent, no log at all) use un-narrowed <code>except Exception</code>. The regime-check fallback direction is risk-increasing: any exception defaults to "bull market."</li>
+      </ul>
+      <h3>Architectural debt</h3>
+      <ul>
+        <li>Two independent codebases, zero shared package. A cost-model bug fixed in AlgoTrader (F4) required a second, separate fix pass across three sibling files to reach parity &mdash; and only 1 of those 3 files was actually fixed to import a shared, accurate model; the other two still hardcode flat rates.</li>
+        <li>No git repository anywhere in the tree. No commit-SHA-to-result traceability; <code>results/</code> in the sibling repo has ~100+ CSV/PNG/HTML artifacts with no run manifest tying any of them to the code state that produced them.</li>
+      </ul>
+      <h3>Research gaps (see §8 for detail)</h3>
+      <ul>
+        <li>Momentum's alpha loses significance on the only fair post-2021 window tested (p=0.23) &mdash; the earlier significant result depends materially on the 2019&ndash;2021 COVID crash/recovery being in-sample.</li>
+        <li>Single-factor confound unresolved: whether the ~30% annualized alpha is genuine security-selection skill or an unmodeled small/mid-cap risk premium has not been tested (the recommended two-factor extension against Nifty Smallcap 250 is proposed, not yet run).</li>
+      </ul>
+      <h3>Security risks</h3>
+      <p class="muted">Low current exposure (no live credentials exist to leak), but the security posture is untested, not proven: <code>.env.example</code> loading is dead code, and no secrets-handling path has ever been exercised end to end with a real key.</p>
+    </section>
+
+    <section id="s8">
+      <p class="sec-num">08 / 15</p>
+      <h2>Research Assessment</h2>
+      <p>This is the project's strongest dimension, and it deserves to be described precisely rather than either dismissed or oversold.</p>
+      <h3>What's genuinely rigorous</h3>
+      <ul>
+        <li><strong>Explicit falsification chain, not cherry-picked confirmation.</strong> One-factor CAPM (alpha +30.2% ann., p=0.0021) &rarr; two-factor with size control (alpha shrinks 21% to +23.2% ann., p=0.009, survives) &rarr; three-factor on the only fair 2021&ndash;2024 overlap window (<strong>alpha loses significance, p=0.23</strong>). The project reports the failed test as the headline finding of its own closure summary rather than burying it.</li>
+        <li><strong>Look-ahead bias found and fixed with proof.</strong> Signal/fill separation (T+1) implemented in both engines, with an <code>assert exec_date &gt; date</code> invariant running on every single buy in production, not just in a test file.</li>
+        <li><strong>Determinism proven, not asserted.</strong> A Python hash-seed ordering bug (raw <code>set()</code> iteration affecting which stocks get bought when cash is short) was found in <em>all four</em> tournament strategies and fixed; self-checks force different <code>PYTHONHASHSEED</code> values across subprocess runs specifically to exercise the failure mode, not just re-run the same process.</li>
+        <li><strong>Regime-based return decomposition</strong> found 54% of total return concentrated in TRENDING_BULL weeks (26% of the sample) &mdash; real concentration, reported honestly, with the caveat that TRENDING_BULL recurs every year through 2024 (i.e., "it was all COVID" is explicitly ruled out as the full explanation).</li>
+      </ul>
+      <h3>What's unresolved</h3>
+      <ul>
+        <li><strong>Size-factor confound.</strong> The CAPM regression uses raw (not excess-of-risk-free) returns and a single-factor (Nifty 50) benchmark against a Nifty-500-sourced strategy that includes mid/small-caps. The report itself states this "cannot distinguish genuine security-selection skill from small/mid-cap risk premium" &mdash; the two-factor extension against a smallcap index is proposed but not yet run.</li>
+        <li><strong>Survivorship bias is accepted, not corrected.</strong> Documented as a deliberate decision (5 blocked attempts to source point-in-time NSE constituent data), one-directional (inflationary only) &mdash; a defensible call given data-access reality, but it means every absolute CAGR/Sharpe number in the project should be read as an upper bound.</li>
+        <li><strong>Coverage is 1 of 20 strategies.</strong> This entire falsification chain (CAPM, factor timing, regime stability, determinism) was applied only to Momentum. The sibling repo's 16 strategies have research quality closer to "backtest + manual bug hunt" (4 confirmed metric-breaking bugs found that way) than to statistical hypothesis testing.</li>
+        <li><strong>Quality Factor's fundamentals gate is a documented no-op.</strong> <code>strategies/07_quality_factor.py:211</code> hardcodes PE to <code>None</code>, making the quality_value PE&le;50 filter never fire &mdash; confirmed by <code>results/07_quality_metrics.csv</code> showing <code>quality_cagr</code> and <code>quality_value_cagr</code> byte-identical. <code>DEVLOG.md</code> itself flags this as "residual look-ahead bias risk... treat as upper-bound."</li>
+      </ul>
+      <p><strong>Net read:</strong> real, non-trivial, honestly-reported statistical signal that has survived two falsification attempts and failed a third on power grounds, not on a clean null result. This is "mixed evidence, competently characterized" &mdash; a genuinely unusual place for a solo retail project to land, and better than either "confirmed edge" or "no edge" would be as a summary.</p>
+    </section>
+
+    <section id="s9">
+      <p class="sec-num">09 / 15</p>
+      <h2>Engineering Assessment</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Dimension</th><th>Verdict</th><th class="evid" style="max-width:none">Basis</th></tr></thead>
+        <tbody>
+          <tr><td>Architecture quality</td><td><span class="chip serious">Weak</span></td><td class="evid" style="max-width:none">Two codebases, zero shared package. 16 strategy scripts, zero classes, zero shared interface &mdash; confirmed via full <code>class</code> grep.</td></tr>
+          <tr><td>SOLID / DRY</td><td><span class="chip serious">Weak</span></td><td class="evid" style="max-width:none">Strategy params duplicated verbatim across files with nothing enforcing parity (F8). Cost constants reimplemented 4 different ways across 4 live strategies.</td></tr>
+          <tr><td>Maintainability</td><td><span class="chip serious">Below average</span></td><td class="evid" style="max-width:none">No central config, no dependency manifest in AlgoTrader at all &mdash; a fresh checkout cannot be reliably reproduced.</td></tr>
+          <tr><td>Testability</td><td><span class="chip serious">Below average</span></td><td class="evid" style="max-width:none">Self-checks exist and are real (not fake), but gated behind manual <code>--selftest</code> flags, not wired to any runner &mdash; nothing runs them automatically, ever.</td></tr>
+          <tr><td>Observability</td><td><span class="chip critical">Weak</span></td><td class="evid" style="max-width:none">Plain-text logs, recently improved with error tags. No structured logs, no metrics, no external alert channel.</td></tr>
+          <tr><td>Error handling</td><td><span class="chip serious">Inconsistent</span></td><td class="evid" style="max-width:none">Mix of logged and fully-silent broad <code>except Exception</code> blocks (<code>download_data.py:64</code> has neither a log line nor an <code>as e</code>). No narrowly-typed exception handling anywhere audited.</td></tr>
+          <tr><td>Dependency management</td><td><span class="chip critical">Missing (AlgoTrader)</span></td><td class="evid" style="max-width:none">No <code>requirements.txt</code>/<code>pyproject.toml</code>/lockfile at all for the flagship strategy's own codebase.</td></tr>
+          <tr><td>Correctness discipline</td><td><span class="chip good">Above average for stage</span></td><td class="evid" style="max-width:none">Look-ahead and determinism bugs were found through deliberate, adversarial self-audit &mdash; not through a production incident &mdash; and fixed with reproducibility proof (3 byte-identical runs). This is the standout positive.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s10">
+      <p class="sec-num">10 / 15</p>
+      <h2>Operational Assessment</h2>
+      <ul>
+        <li><strong>Deployment:</strong> none. No Docker, no Kubernetes, no CI/CD, no cloud target. Single laptop, single user.</li>
+        <li><strong>Scheduling:</strong> presumed Windows Task Scheduler (behavioral evidence from log timestamps only); no registration artifact found in either tree.</li>
+        <li><strong>Secrets:</strong> nothing to manage yet &mdash; no live credentials exist. <code>.env.example</code> is unused scaffolding (zero <code>dotenv</code>/<code>os.environ</code>/<code>getenv</code> hits for it in project code).</li>
+        <li><strong>Monitoring / alerting:</strong> none. Failures surface only if someone opens a log file. The 2026-07-13 scheduler hardening (flag file + non-zero exit + red console banner) is a real improvement but still requires a human to look.</li>
+        <li><strong>Recovery / restart:</strong> <code>paper_state.json</code> persists cash/holdings/pending orders across runs (evidenced, real) &mdash; state does survive a restart. But the scheduler was observed to run twice in one day during early setup (2026-06-09, 13:21 and 13:35) with no idempotency/dedup protection visible in the queue design.</li>
+        <li><strong>Backups / versioning:</strong> none. No git repository anywhere in the audited tree; no data snapshot versioning beyond overwriting the same CSV cache files.</li>
+        <li><strong>Journal / operator discipline:</strong> <code>data/journal.md</code> was populated once (2026-06-09) and never touched again despite ~5 Fridays of scheduled entries since &mdash; the manual operational habit the plan depends on has lapsed.</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <p class="sec-num">11 / 15</p>
+      <h2>Production Readiness</h2>
+      <div class="qa-grid">
+        <div class="qa-row"><div class="q">Compile / run<small>Executes as plain Python scripts, no build step</small></div><span class="chip good">Yes</span></div>
+        <div class="qa-row"><div class="q">Backtest<small>momentum_backtest.py + 16 sibling strategies, all produce real output</small></div><span class="chip good">Yes</span></div>
+        <div class="qa-row"><div class="q">Reproduce research<small>Momentum: byte-identical proven. No git/lockfile/run-manifest ties a number to a code state.</small></div><span class="chip serious">Partial</span></div>
+        <div class="qa-row"><div class="q">Paper trade<small>Live since 2026-06-09, with confirmed log gaps and one caught silent crash</small></div><span class="chip good">Yes, with gaps</span></div>
+        <div class="qa-row"><div class="q">Live trade<small>Zero broker integration exists. ₹0 deployed. Explicitly gated behind an unmet SEBI checklist.</small></div><span class="chip critical">No</span></div>
+        <div class="qa-row"><div class="q">Recover from failures<small>Fail-loud scheduler exists (2026-07-13); a truncated run and a missing log day both predate/postdate it without full resolution shown</small></div><span class="chip serious">Partial</span></div>
+        <div class="qa-row"><div class="q">Handle broker disconnects<small>No broker connection exists to disconnect from</small></div><span class="chip critical">N/A &mdash; not built</span></div>
+        <div class="qa-row"><div class="q">Restart safely<small>paper_state.json persists across runs; no dedup/idempotency check found for double-invocation</small></div><span class="chip serious">Partial</span></div>
+        <div class="qa-row"><div class="q">Manage capital<small>₹4L virtual across 4 strategies only. No real capital has ever been deployed.</small></div><span class="chip critical">Virtual only</span></div>
+        <div class="qa-row"><div class="q">Control risk<small>Single-strategy stop-loss/regime exit only. Zero portfolio-level risk control.</small></div><span class="chip serious">Partial, single-strategy only</span></div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <p class="sec-num">12 / 15</p>
+      <h2>Development Readiness Score</h2>
+      <p class="muted">Independently computed against this task's fixed weighting. Distinct from &mdash; and more conservative than &mdash; the project's own internal DRS (61/100), which scores Momentum's research validity alone. This score evaluates the whole platform against an institutional bar.</p>
+      <div class="drs-total"><span class="n">53</span><span class="of">/ 100</span><div class="tier"><div class="k">Policy tier</div><div class="v" style="color:var(--critical)">Research only &middot; no live capital</div></div></div>
+
+      <div class="grid-2">
+        <div class="table-wrap" style="margin-top:0"><table>
+          <thead><tr><th>Category</th><th class="num">Max</th><th class="num">Score</th><th class="evid" style="max-width:none">Why</th></tr></thead>
+          <tbody>
+            <tr><td>Engineering</td><td class="num">20</td><td class="num">12</td><td class="evid" style="max-width:none">Real bug-hunting discipline, but no shared architecture, no dependency manifest (AlgoTrader), inconsistent error handling.</td></tr>
+            <tr><td>Research</td><td class="num">20</td><td class="num">13</td><td class="evid" style="max-width:none">Genuinely rigorous falsification chain, applied to 1 of 20 strategies; size-factor confound still open.</td></tr>
+            <tr><td>Infrastructure</td><td class="num">15</td><td class="num">4</td><td class="evid" style="max-width:none">One laptop, no cloud/containers, scheduler trigger unconfirmed by any artifact.</td></tr>
+            <tr><td>Validation</td><td class="num">15</td><td class="num">8</td><td class="evid" style="max-width:none">Look-ahead/determinism fixed and proven; survivorship bias confirmed unfixed; no k-fold CV; prospective validation 0/13 weeks.</td></tr>
+            <tr><td>Reliability</td><td class="num">10</td><td class="num">4</td><td class="evid" style="max-width:none">Fail-loud scheduler added, but 5 weeks of logs already show a missed day, a truncated run, and a late trigger.</td></tr>
+            <tr><td>Testing</td><td class="num">10</td><td class="num">3</td><td class="evid" style="max-width:none">Real asserts on 5 of ~22 modules; zero coverage on the 16-strategy, 4,513-LOC suite; no framework, no CI.</td></tr>
+            <tr><td>Documentation</td><td class="num">5</td><td class="num">5</td><td class="evid" style="max-width:none">Exceptional for the stage. Full marks.</td></tr>
+            <tr><td>Deployment</td><td class="num">5</td><td class="num">0</td><td class="evid" style="max-width:none">Nothing exists: no CI/CD, no Docker, no defined target.</td></tr>
+            <tr><td>Operations</td><td class="num">5</td><td class="num">1</td><td class="evid" style="max-width:none">Manual/unconfirmed-scheduled execution; the required weekly journal habit lapsed after day one.</td></tr>
+            <tr><td>Security</td><td class="num">5</td><td class="num">3</td><td class="evid" style="max-width:none">No leaked secrets, but zero secrets-handling path has ever been exercised with a real credential.</td></tr>
+            <tr style="font-weight:650"><td>Total</td><td class="num">100</td><td class="num">53</td><td></td></tr>
+          </tbody>
+        </table></div>
+
+        <div class="radar-card">
+          <canvas id="radar" width="520" height="520" role="img" aria-label="Maturity radar across twelve dimensions, scored 0 to 100: Engineering 60, Research 65, Infrastructure 27, Automation 45, Reliability 40, Documentation 100, Testing 30, Deployment 0, Operations 20, Security 60, Performance 50, Maintainability 35."></canvas>
+          <p class="cap">Maturity radar &middot; 0&ndash;100 per dimension</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="s13">
+      <p class="sec-num">13 / 15</p>
+      <h2>Critical Path</h2>
+      <ol class="crit-path">
+        <li><div class="t">Resolve SEBI / Angel One compliance status</div><div class="d">Pure verification, zero engineering dependency, already 3+ months past the enforcement deadline. Blocks every live-capital path regardless of which strategy eventually wins the tournament. 0 of 7 checklist items done.</div></li>
+        <li><div class="t">Close the confirmed scheduler reliability gaps</div><div class="d">Root-cause the missing 2026-07-01 log and the truncated 2026-06-30 run before trusting the 13-week prospective-validation count that depends on unbroken weekly execution.</div></li>
+        <li><div class="t">Accumulate the 13 required weekly rebalances</div><div class="d">Currently 0 of 13. This is the literal, currently-active gate the strategy is frozen against &mdash; see §14.</div></li>
+        <li><div class="t">Fix or explicitly flag F9 (fabricated universe)</div><div class="d">Two of the tournament's four live strategies select stocks from a hardcoded, hindsight-biased 95-ticker list. Their standing in any 2026-09-09 gate comparison is not evidence-comparable to Momentum's real-universe backtest until this is fixed or the comparison is caveated in the gate decision itself.</div></li>
+        <li><div class="t">Run the proposed two-factor (size) regression</div><div class="d">Directly resolves the open question in §8: is the ~30% annualized alpha genuine skill or a small/mid-cap risk premium in disguise. Already scoped, waiting on approval per the research doc itself.</div></li>
+        <li><div class="t">Only then: shared architecture extraction (quantos-core)</div><div class="d">Cost model, metrics, and config unification across both codebases &mdash; correctly sequenced last in the project's own roadmap, and correctly so; don't build shared infrastructure before Phase 1 items above are settled.</div></li>
+      </ol>
+    </section>
+
+    <section id="s14">
+      <p class="sec-num">14 / 15</p>
+      <h2>Immediate Next Milestone</h2>
+      <div class="milestone-card">
+        <p class="tag">Single milestone &middot; everything else is backlog</p>
+        <h3>13 clean, gap-free weekly rebalance observations under the Prospective Validation freeze</h3>
+        <p>Currently <strong>0 of 13</strong>, per the project's own active rule (<code>CONTEXT.md:14-36</code>, in force since 2026-07-13). This is the one thing the project is actually, presently doing: Momentum's alpha model, ranking logic, and parameters are frozen; the only sanctioned activity is watching the scheduler execute cleanly, week over week, and logging what happens. It is the literal gate between "mixed historical evidence" (§8) and any re-evaluation of go-live readiness.</p>
+        <p class="muted">Two things threaten this milestone's integrity even though they don't block it from starting: the SEBI checklist (§13, item 1) doesn't block the observation count, but going live at the end of it does; and the confirmed scheduler gaps (§13, item 2) mean "13 weeks" needs to mean 13 <em>verified-clean</em> weeks, not 13 calendar weeks with unexamined silent misses folded in.</p>
+      </div>
+    </section>
+
+    <section id="s15">
+      <p class="sec-num">15 / 15</p>
+      <h2>Executive Summary</h2>
+      <p>QuantOS, as it exists on 2026-07-13, is Phase 7 of 14 (Validation Framework) at 27% overall completion and a Development Readiness Score of 53/100 &mdash; a solo-operator research project with an unusually rigorous statistical validation trail on one strategy (Momentum: real look-ahead-bias and determinism fixes, an honest three-stage CAPM falsification chain that found its own edge case, p=0.23 on the only fair post-2021 window) sitting inside two disconnected, ungoverned Python codebases with no git history, no shared architecture, no automated test coverage on 4,513 of its ~6,160 total lines, no portfolio-level risk engine, and zero broker connectivity. The main risks are not exotic: a fabricated 95-ticker "universe" feeding two of the four live tournament strategies, unresolved point-in-time survivorship bias across the board, an unmet SEBI compliance checklist already three months past its enforcement deadline, and scheduler gaps (a missing log day, a truncated run) that put pressure on the integrity of the one gate &mdash; 13 clean weekly rebalances &mdash; the project has explicitly set for itself as its next milestone. Confidence in this assessment is <strong>high</strong>: every claim above traces to a specific file, line, or log timestamp, independently re-derived from the code rather than taken from the project's own audit trail, which itself is unusually honest and mostly corroborated on cross-check.</p>
+    </section>
+
+    <footer>QuantOS Independent Audit &middot; verification-only, no code written &middot; generated 2026-07-13</footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  var c = document.getElementById('radar');
+  if(!c) return;
+  var ctx = c.getContext('2d');
+  var dpr = Math.min(window.devicePixelRatio||1, 2);
+  var size = 520;
+  c.width = size*dpr; c.height = size*dpr;
+  ctx.scale(dpr,dpr);
+
+  var labels = ["Engineering","Research","Infrastructure","Automation","Reliability","Documentation","Testing","Deployment","Operations","Security","Performance","Maintainability"];
+  var values = [60,65,27,45,40,100,30,0,20,60,50,35];
+
+  var cx = size/2, cy = size/2, R = 168;
+  var n = labels.length;
+
+  function isDark(){
+    var t = document.documentElement.getAttribute('data-theme');
+    if(t === 'dark') return true;
+    if(t === 'light') return false;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function draw(){
+    var dark = isDark();
+    var ink = dark ? '#f2efe8' : '#1b1a17';
+    var muted = dark ? '#8b877c' : '#86837a';
+    var grid = dark ? 'rgba(242,239,232,0.14)' : 'rgba(27,26,23,0.14)';
+    var accent = dark ? '#e3a55c' : '#a3691f';
+    var accentFill = dark ? 'rgba(227,165,92,0.22)' : 'rgba(163,105,31,0.18)';
+
+    ctx.clearRect(0,0,size,size);
+    ctx.font = '11px ' + getComputedStyle(document.body).fontFamily;
+
+    // rings
+    ctx.strokeStyle = grid; ctx.lineWidth = 1;
+    [0.25,0.5,0.75,1].forEach(function(f){
+      ctx.beginPath();
+      for(var i=0;i<n;i++){
+        var ang = -Math.PI/2 + i*2*Math.PI/n;
+        var r = R*f;
+        var x = cx + r*Math.cos(ang), y = cy + r*Math.sin(ang);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath(); ctx.stroke();
+    });
+
+    // spokes
+    for(var i=0;i<n;i++){
+      var ang = -Math.PI/2 + i*2*Math.PI/n;
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+R*Math.cos(ang), cy+R*Math.sin(ang));
+      ctx.strokeStyle = grid; ctx.stroke();
+    }
+
+    // data polygon
+    ctx.beginPath();
+    for(var i=0;i<n;i++){
+      var ang = -Math.PI/2 + i*2*Math.PI/n;
+      var r = R*(values[i]/100);
+      var x = cx + r*Math.cos(ang), y = cy + r*Math.sin(ang);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = accentFill; ctx.fill();
+    ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.stroke();
+
+    // points
+    for(var i=0;i<n;i++){
+      var ang = -Math.PI/2 + i*2*Math.PI/n;
+      var r = R*(values[i]/100);
+      var x = cx + r*Math.cos(ang), y = cy + r*Math.sin(ang);
+      ctx.beginPath(); ctx.arc(x,y,3,0,7);
+      ctx.fillStyle = accent; ctx.fill();
+    }
+
+    // labels
+    ctx.fillStyle = ink;
+    ctx.textBaseline = 'middle';
+    for(var i=0;i<n;i++){
+      var ang = -Math.PI/2 + i*2*Math.PI/n;
+      var lr = R + 26;
+      var x = cx + lr*Math.cos(ang), y = cy + lr*Math.sin(ang);
+      ctx.textAlign = Math.cos(ang) > 0.15 ? 'left' : (Math.cos(ang) < -0.15 ? 'right' : 'center');
+      ctx.fillStyle = ink;
+      ctx.fillText(labels[i], x, y-6);
+      ctx.fillStyle = muted;
+      ctx.fillText(values[i], x, y+7);
+    }
+  }
+
+  draw();
+  window.addEventListener('resize', draw);
+  if(window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+  }
+  var mo = new MutationObserver(draw);
+  mo.observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+})();
+
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  if(!('IntersectionObserver' in window)) return;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      var idx = sections.indexOf(e.target);
+      if(idx === -1) return;
+      if(e.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('active'); });
+        links[idx].classList.add('active');
+      }
+    });
+  }, {rootMargin:'-10% 0px -75% 0px'});
+  sections.forEach(function(s){ if(s) io.observe(s); });
+})();
+</script>

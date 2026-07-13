@@ -1,0 +1,579 @@
+<title>QuantOS — Qlib &amp; TradingAgents Adoption Review</title>
+<style>
+:root{
+  --bg:#f6f4ef; --surface:#ffffff; --surface-2:#efece4;
+  --ink:#1b1a17; --ink-2:#55534c; --muted:#86837a;
+  --border:rgba(27,26,23,0.12); --border-strong:rgba(27,26,23,0.22);
+  --accent:#a3691f; --accent-weak:rgba(163,105,31,0.12); --accent-weak-2:rgba(163,105,31,0.28);
+  --good:#0ca30c; --warning:#c98500; --serious:#ec835a; --critical:#d03b3b;
+  --l0:#b3261e; --l1:#c65a3a; --l2:#c9812f; --l3:#b89b2e; --l4:#6f9c3e; --l5:#2f8f5b;
+  --ref:#4472a8;
+  --shadow: 0 1px 2px rgba(27,26,23,0.06), 0 8px 24px -12px rgba(27,26,23,0.18);
+  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#100f0d; --surface:#171613; --surface-2:#1e1c19;
+    --ink:#f2efe8; --ink-2:#c7c3b7; --muted:#8b877c;
+    --border:rgba(242,239,232,0.12); --border-strong:rgba(242,239,232,0.22);
+    --accent:#e3a55c; --accent-weak:rgba(227,165,92,0.14); --accent-weak-2:rgba(227,165,92,0.32);
+    --good:#3fc23f; --warning:#fab219; --serious:#ff9d75; --critical:#ff6b6b;
+    --l0:#e05a52; --l1:#e08256; --l2:#e0a95a; --l3:#cdbb5f; --l4:#8fc26a; --l5:#4fbd85;
+    --ref:#7fa6d6;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f0d; --surface:#171613; --surface-2:#1e1c19;
+  --ink:#f2efe8; --ink-2:#c7c3b7; --muted:#8b877c;
+  --border:rgba(242,239,232,0.12); --border-strong:rgba(242,239,232,0.22);
+  --accent:#e3a55c; --accent-weak:rgba(227,165,92,0.14); --accent-weak-2:rgba(227,165,92,0.32);
+  --good:#3fc23f; --warning:#fab219; --serious:#ff9d75; --critical:#ff6b6b;
+  --l0:#e05a52; --l1:#e08256; --l2:#e0a95a; --l3:#cdbb5f; --l4:#8fc26a; --l5:#4fbd85;
+  --ref:#7fa6d6;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+}
+:root[data-theme="light"]{
+  --bg:#f6f4ef; --surface:#ffffff; --surface-2:#efece4;
+  --ink:#1b1a17; --ink-2:#55534c; --muted:#86837a;
+  --border:rgba(27,26,23,0.12); --border-strong:rgba(27,26,23,0.22);
+  --accent:#a3691f; --accent-weak:rgba(163,105,31,0.12); --accent-weak-2:rgba(163,105,31,0.28);
+  --good:#0ca30c; --warning:#c98500; --serious:#ec835a; --critical:#d03b3b;
+  --l0:#b3261e; --l1:#c65a3a; --l2:#c9812f; --l3:#b89b2e; --l4:#6f9c3e; --l5:#2f8f5b;
+  --ref:#4472a8;
+  --shadow: 0 1px 2px rgba(27,26,23,0.06), 0 8px 24px -12px rgba(27,26,23,0.18);
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;} }
+
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15.5px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+::selection{ background:var(--accent-weak-2); }
+
+.shell{ display:grid; grid-template-columns:270px minmax(0,1fr); min-height:100vh; }
+@media (max-width:960px){ .shell{ grid-template-columns:1fr; } .toc{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--border); } }
+
+.toc{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:28px 18px 40px; border-right:1px solid var(--border); background:var(--surface);
+}
+.toc-brand{ font-family:var(--serif); font-size:1.02rem; letter-spacing:0.01em; margin:0 0 2px; }
+.toc-brand small{ display:block; font-family:var(--mono); font-size:0.68rem; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; margin-top:4px; }
+.toc hr{ border:none; border-top:1px solid var(--border); margin:16px 0; }
+.toc ol{ list-style:none; margin:0; padding:0; counter-reset:sec; }
+.toc li{ counter-increment:sec; }
+.toc a{
+  display:flex; gap:10px; align-items:baseline; text-decoration:none; color:var(--ink-2);
+  font-size:0.82rem; padding:6px 8px; border-radius:5px; line-height:1.35;
+}
+.toc a::before{ content: counter(sec, decimal-leading-zero); font-family:var(--mono); font-size:0.7rem; color:var(--muted); flex:0 0 auto; }
+.toc a:hover, .toc a:focus-visible{ background:var(--accent-weak); color:var(--ink); }
+.toc a:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+.toc .committee{ margin-top:20px; padding-top:16px; border-top:1px solid var(--border); font-family:var(--mono); font-size:0.68rem; color:var(--muted); line-height:1.8; }
+
+main{ padding:0; min-width:0; }
+.hero{
+  padding:44px clamp(20px,4vw,56px) 34px; border-bottom:1px solid var(--border);
+  background:
+    radial-gradient(1200px 420px at 85% -10%, var(--accent-weak), transparent 60%),
+    var(--surface);
+}
+.hero-eyebrow{ font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem; color:var(--accent); margin:0 0 10px; }
+.hero h1{ font-family:var(--serif); font-weight:600; font-size:clamp(1.5rem,2.8vw,2.15rem); margin:0 0 10px; text-wrap:balance; letter-spacing:0.002em; }
+.hero p.lead{ max-width:70ch; color:var(--ink-2); font-size:1.02rem; margin:0 0 24px; }
+
+.verdict-row{ display:flex; flex-wrap:wrap; gap:14px; }
+.stat{
+  background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+  padding:14px 18px; min-width:150px; box-shadow:var(--shadow);
+}
+.stat .k{ font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+.stat .v{ font-family:var(--serif); font-size:1.7rem; margin-top:2px; font-variant-numeric:tabular-nums; }
+.stat .v small{ font-family:var(--sans); font-size:0.95rem; color:var(--muted); font-weight:400; }
+.stat.warn .v{ color:var(--serious); }
+.stat.crit .v{ color:var(--critical); }
+.stat.good .v{ color:var(--good); }
+
+section{ padding:40px clamp(20px,4vw,56px); border-bottom:1px solid var(--border); max-width:1000px; }
+section:last-of-type{ border-bottom:none; }
+.sec-num{ font-family:var(--mono); color:var(--accent); font-size:0.78rem; letter-spacing:0.08em; }
+h2{ font-family:var(--serif); font-weight:600; font-size:1.5rem; margin:2px 0 18px; text-wrap:balance; }
+h3{ font-family:var(--serif); font-weight:600; font-size:1.12rem; margin:26px 0 10px; }
+h4{ font-family:var(--sans); font-weight:700; font-size:0.92rem; margin:18px 0 8px; color:var(--ink); }
+p{ margin:0 0 14px; max-width:74ch; color:var(--ink); }
+p.muted{ color:var(--ink-2); font-size:0.94rem; }
+ul,ol.plain{ margin:0 0 14px; padding-left:1.3em; }
+li{ margin-bottom:6px; }
+strong{ font-weight:650; }
+code{ font-family:var(--mono); font-size:0.88em; background:var(--surface-2); padding:0.1em 0.4em; border-radius:4px; border:1px solid var(--border); }
+
+.callout{
+  border:1px solid var(--border-strong); border-left:3px solid var(--accent);
+  background:var(--surface-2); border-radius:0 8px 8px 0; padding:14px 18px; margin:16px 0;
+  font-size:0.93rem; color:var(--ink-2);
+}
+.callout strong{ color:var(--ink); }
+.callout.crit{ border-left-color:var(--critical); }
+.callout.warn{ border-left-color:var(--serious); }
+.callout.good{ border-left-color:var(--good); }
+
+.table-wrap{ overflow-x:auto; margin:8px 0 20px; border:1px solid var(--border); border-radius:10px; background:var(--surface); box-shadow:var(--shadow); }
+table{ border-collapse:collapse; width:100%; min-width:600px; font-size:0.87rem; }
+th,td{ text-align:left; padding:9px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
+thead th{ font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); background:var(--surface-2); position:sticky; top:0; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--accent-weak); }
+td.num, th.num{ font-variant-numeric:tabular-nums; font-family:var(--mono); font-size:0.85rem; }
+td.evid{ color:var(--ink-2); font-size:0.85rem; max-width:34ch; }
+td.evid code{ font-size:0.82em; }
+
+.chip{ display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+.chip::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.chip.good{ color:var(--good); background:color-mix(in srgb, var(--good) 14%, transparent); }
+.chip.serious{ color:var(--serious); background:color-mix(in srgb, var(--serious) 16%, transparent); }
+.chip.critical{ color:var(--critical); background:color-mix(in srgb, var(--critical) 14%, transparent); }
+.chip.warn{ color:var(--warning); background:color-mix(in srgb, var(--warning) 16%, transparent); }
+.chip.ref{ color:var(--ref); background:color-mix(in srgb, var(--ref) 16%, transparent); }
+
+.verdict-chip{ display:inline-flex; align-items:center; font-family:var(--mono); font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:5px; white-space:nowrap; letter-spacing:0.02em; }
+.verdict-chip.adopt{ color:#fff; background:var(--good); }
+.verdict-chip.adapt{ color:#fff; background:var(--accent); }
+.verdict-chip.refonly{ color:#fff; background:var(--ref); }
+.verdict-chip.reject{ color:#fff; background:var(--critical); }
+
+.legend-row{ display:flex; flex-wrap:wrap; gap:8px 16px; margin:6px 0 22px; font-size:0.78rem; color:var(--muted); align-items:center; }
+.legend-row .verdict-chip{ font-size:0.68rem; }
+
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media (max-width:760px){ .grid-2, .grid-3{ grid-template-columns:1fr; } }
+
+.card{ border:1px solid var(--border); background:var(--surface); border-radius:10px; padding:16px 18px; box-shadow:var(--shadow); }
+.card h4{ margin-top:0; }
+
+.verdict-total{
+  display:flex; align-items:baseline; gap:14px; padding:18px 20px; border-radius:10px;
+  background:var(--surface-2); border:1px solid var(--border-strong); margin:6px 0 20px;
+}
+.verdict-total .n{ font-family:var(--serif); font-size:2rem; color:var(--accent); }
+.verdict-total .of{ color:var(--muted); font-family:var(--mono); font-size:0.85rem; }
+
+.crit-path{ list-style:none; margin:10px 0 20px; padding:0; counter-reset:cp; display:flex; flex-direction:column; gap:0; }
+.crit-path li{ counter-increment:cp; position:relative; padding:14px 0 14px 34px; border-left:2px solid var(--border-strong); margin-left:9px; }
+.crit-path li::before{
+  content: counter(cp); position:absolute; left:-11px; top:12px; width:20px; height:20px; border-radius:50%;
+  background:var(--surface); border:2px solid var(--accent); color:var(--accent); font-family:var(--mono); font-size:0.68rem;
+  display:flex; align-items:center; justify-content:center; font-weight:700;
+}
+.crit-path li:last-child{ border-left-color:transparent; }
+.crit-path .t{ font-weight:650; margin-bottom:3px; }
+.crit-path .d{ color:var(--ink-2); font-size:0.88rem; max-width:64ch; }
+
+.milestone-card{
+  border:1px solid var(--border-strong); border-radius:12px; padding:22px 24px; background:
+    linear-gradient(180deg, var(--accent-weak), transparent 60%), var(--surface); box-shadow:var(--shadow);
+}
+.milestone-card .tag{ font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); }
+.milestone-card h3{ margin:6px 0 10px; font-size:1.2rem; }
+
+.roles{ display:flex; flex-direction:column; gap:0; margin:10px 0 20px; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); }
+.role-row{ display:grid; grid-template-columns:190px 1fr; gap:14px; padding:11px 16px; border-bottom:1px solid var(--border); }
+.role-row:last-child{ border-bottom:none; }
+.role-row .role{ font-family:var(--mono); font-size:0.74rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.04em; }
+.role-row .say{ font-size:0.9rem; color:var(--ink-2); }
+
+pre{ font-family:var(--mono); font-size:0.8rem; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:16px 18px; overflow-x:auto; line-height:1.65; }
+pre .new{ color:var(--good); font-weight:700; }
+pre .keep{ color:var(--muted); }
+
+footer{ padding:30px clamp(20px,4vw,56px) 60px; color:var(--muted); font-size:0.8rem; font-family:var(--mono); }
+</style>
+
+<div class="shell">
+  <nav class="toc" id="toc">
+    <p class="toc-brand">QuantOS DD Committee<small>Qlib &amp; TradingAgents &middot; 2026-07-13</small></p>
+    <hr>
+    <ol>
+      <li><a href="#s0">Current QuantOS</a></li>
+      <li><a href="#s1">Executive Summary</a></li>
+      <li><a href="#s2">Qlib Evaluation</a></li>
+      <li><a href="#s3">TradingAgents Evaluation</a></li>
+      <li><a href="#s4">Architecture Comparison</a></li>
+      <li><a href="#s5">Subsystem Decision Matrix</a></li>
+      <li><a href="#s6">Recommended Components</a></li>
+      <li><a href="#s7">Rejected Components</a></li>
+      <li><a href="#s8">Migration Strategy</a></li>
+      <li><a href="#s9">Engineering Savings</a></li>
+      <li><a href="#s10">Technical Risks</a></li>
+      <li><a href="#s11">Final Recommendation</a></li>
+      <li><a href="#s12">Future Architecture</a></li>
+    </ol>
+    <div class="committee">CTO &middot; Principal Architect &middot; Quant Research Eng &middot; ML Platform Lead &middot; Trading Infra Lead &middot; Principal Python Eng &middot; Portfolio Eng &middot; Risk Systems Eng &middot; DevOps Architect &middot; SRE &middot; OSS Governance</div>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <p class="hero-eyebrow">Institutional Technical Due Diligence &middot; Verification-Only, No Implementation</p>
+      <h1>Neither framework accelerates QuantOS. Both confirm it was already building the right thing.</h1>
+      <p class="lead">Qlib (46k★, MIT, Microsoft) and TradingAgents (93k★, Apache-2.0, Tauric Research) were evaluated against QuantOS as it actually exists on 2026-07-13 — Phase 7 of 14, DRS 53/100, Momentum frozen at 0 of 13 required weekly rebalances. Verdict: adopt fragments (factor formulas, two config/strategy design patterns, one deferred LLM-client pattern), reject both runtimes wholesale. The two problems actually blocking QuantOS — point-in-time NSE data and live risk control — remain unsolved in both external projects too.</p>
+      <div class="verdict-row">
+        <div class="stat"><div class="k">Frameworks evaluated</div><div class="v">2</div></div>
+        <div class="stat good"><div class="k">Adopted wholesale</div><div class="v">0<small> of 2</small></div></div>
+        <div class="stat crit"><div class="k">Rejected wholesale</div><div class="v">2<small> of 2</small></div></div>
+        <div class="stat"><div class="k">Components harvested</div><div class="v">6<small> fragments</small></div></div>
+        <div class="stat good"><div class="k">Frozen strategy touched</div><div class="v">0</div></div>
+        <div class="stat"><div class="k">Net time saved</div><div class="v">~1&ndash;2<small> weeks</small></div></div>
+      </div>
+    </div>
+
+    <section id="s0">
+      <p class="sec-num">Context / 13</p>
+      <h2>Current QuantOS — Ground Truth</h2>
+      <p>Full detail already exists in <code>(AI) QuantOS Independent Audit - 2026-07-13.html</code> and <code>(AI) QuantOS Target Architecture Blueprint - 2026-07-13.html</code>, both dated today. This review does not re-derive that audit — it takes it as given and asks one incremental question the audit didn't: <em>do these two specific open-source projects change any of it?</em> Summary of the parts load-bearing for this review:</p>
+      <div class="grid-2">
+        <div class="card">
+          <h4>Architecture</h4>
+          <p class="muted">Two disconnected Python codebases (<code>AlgoTrader/</code>, 1,647 LOC; <code>trading_backtests/</code>, 4,513 LOC), zero shared library, zero git repository anywhere in the tree, zero broker connectivity, ₹0 live capital. 20 strategies total (4 live-paper-traded, 16 research-only), zero shared base class. A Target Architecture Blueprint already exists — a full <code>quantos_core</code> package design (data/factors/strategies/portfolio/risk/execution/brokers/analytics/validation/monitoring/storage) plus a 10-phase (0&ndash;9) migration roadmap — designed but not yet built.</p>
+        </div>
+        <div class="card">
+          <h4>Research maturity</h4>
+          <p class="muted">Genuinely rigorous on one strategy: an honest CAPM &rarr; two-factor &rarr; three-factor falsification chain that found its own edge case (full-sample alpha p=0.002, loses significance on the fair post-2021 window, p=0.23). Applied to 1 of 20 strategies. Survivorship bias (current-only universe, F1) and a fabricated 95-ticker universe feeding two of four live strategies (F9) are both confirmed present, not merely risked.</p>
+        </div>
+        <div class="card">
+          <h4>Engineering maturity</h4>
+          <p class="muted">Weak by the audit's own scoring: architecture 15%, testing 15%, risk 10%, execution 0%, deployment 0%. Correctness discipline is the standout positive — look-ahead bias and a Python hash-seed determinism bug were found and fixed with proof (3 consecutive byte-identical production runs). No dependency manifest for the flagship strategy. No shared code between the two codebases.</p>
+        </div>
+        <div class="card">
+          <h4>Operational maturity</h4>
+          <p class="muted">One Windows laptop, no cloud, no containers, no CI, no monitoring/alerting, no dashboard. Scheduler has confirmed reliability gaps (a missing log day, a truncated run, a late trigger). SEBI/Angel One compliance checklist: 0 of 7 items closed, already three months past the enforcement deadline.</p>
+        </div>
+      </div>
+      <div class="callout warn"><strong>The one rule this entire review is bound by:</strong> Momentum's alpha model, ranking logic, universe, and parameters are frozen under the project's own Prospective Validation protocol (<code>CONTEXT.md:14-36</code>, active since 2026-07-13) until 13 clean weekly rebalances are observed — currently 0 of 13. Touching that logic restarts the clock. Every recommendation in this document was checked against that constraint before being written down; see §11.</div>
+    </section>
+
+    <section id="s1">
+      <p class="sec-num">01 / 13</p>
+      <h2>Executive Summary</h2>
+      <p>Qlib and TradingAgents sit at opposite ends of the "should we adopt this" spectrum for a different reason than stars, license, or code quality — both are perfectly respectable projects at what they're actually for. The mismatch is structural: QuantOS's real, current constraints are a Windows-only single laptop, an NSE/India universe neither project has native data support for, and a validation discipline (byte-identical reproducibility, frozen-strategy gating) that one of the two candidates is architecturally incapable of satisfying. Neither gap is a maturity problem that a future version fixes — they're design-time decisions in the source projects that point away from this use case.</p>
+      <h3>Qlib, in one line</h3>
+      <p>A mature, well-designed <em>research</em> platform whose individual ideas (Alpha158/360 factor formulas, TopkDropoutStrategy's rank-hold-drop shape, YAML dependency-injection config) are worth studying and reimplementing natively, but whose runtime (binary data store, C-extension build, no NSE adapter, explicitly "recommended on Linux," a Docker escape hatch this project can't use) is a debt trade at this scale — and the project itself shows real cooling signals (last push 3 months stale, ~48% of commits from one contributor, Microsoft's newer energy visibly going into RD-Agent, an LLM-agent layer built <em>on top of</em> Qlib).</p>
+      <h3>TradingAgents, in one line</h3>
+      <p>A well-engineered, actively maintained (47 commits in the trailing 30 days, real CI, healthy bazaar-style contributor base) multi-agent LLM research framework whose central design — an LLM Portfolio Manager rendering the final trade call with zero code-enforced position/exposure math — is the opposite of what a risk engine should be, and whose core output is, by its own maintainers' admission in-code, <strong>not reproducible run-to-run on identical inputs</strong>. That single fact makes it structurally incompatible with a project that treats byte-identical backtest reproducibility as a hard-won, proven requirement (§8 of the audit). This isn't a maturity gap TradingAgents will close with more releases — non-determinism on reasoning-tier models is a stated, permanent property of how it's built.</p>
+      <h3>What this review actually changes</h3>
+      <p>Six small, deferred, non-frozen-strategy items (§6) — mostly ideas and patterns, not code imports. Nothing on the critical path to the 13-week validation gate, the SEBI checklist, or any Phase 0&ndash;4 item in the existing Target Architecture Blueprint moves faster because of this review. What it does do: it closes the open question of whether either framework was a shortcut past the two genuinely hard unsolved problems — point-in-time NSE universe/fundamentals data, and a real portfolio-level risk engine. Both answers are no.</p>
+    </section>
+
+    <section id="s2">
+      <p class="sec-num">02 / 13</p>
+      <h2>Qlib Evaluation</h2>
+      <p class="muted">Verified against the live repo, official docs (qlib.readthedocs.io), and open GitHub issues — not summarized from memory. Full source citations in the underlying research pass.</p>
+
+      <h3>Architecture &amp; modules</h3>
+      <p>Four layers: <strong>Data Layer</strong> (storage/retrieval/expression engine), <strong>Learning Framework</strong> (supervised models + RL), <strong>Workflow Layer</strong> (YAML-driven orchestration via <code>qrun</code>), <strong>Application Layer</strong> (strategy, portfolio construction, order execution/simulation). Modules are nominally independent but most real usage assumes the workflow/config glue (<code>init_instance_by_config</code>) — this is the crux of the adoption question in §13.</p>
+
+      <h3>Data layer</h3>
+      <p>Proprietary <code>.bin</code> binary format (adjusted OHLCV + factor column), built from CSV via <code>scripts/dump_bin.py</code>. An expression engine (<code>$close</code>, <code>Ref()</code>, <code>Mean()</code>, cross-sectional <code>$rank</code>) computes features declaratively. A separate <strong>point-in-time (PIT) database</strong> exists specifically to prevent restatement leakage in fundamental data — but the docs self-admit "the calculation of PIT is not performed in the optimal way." Critically: <strong>no evidence Qlib solves survivorship bias / delisted-ticker universe reconstruction</strong> — its instrument-universe files (<code>csi300.txt</code> etc.) read as static membership lists, the same class of problem as QuantOS's own F1/F9, not a solved one. Shipped data collectors cover Yahoo (US/CN), crypto, CN/US/BR index, Baostock — <strong>zero NSE/BSE adapter</strong>. Building one is a real multi-day build, not a config flag.</p>
+
+      <h3>Feature / factor library</h3>
+      <p><strong>Alpha158</strong> (~158 hand-engineered technical features) and <strong>Alpha360</strong> (~360 raw normalized OHLCV values over a 60-day window, built for sequence models) are the flagship asset here. Both are expression strings in <code>qlib/contrib/data/handler.py</code> — genuinely portable: the math can be read out and reimplemented in plain pandas with zero Qlib runtime dependency.</p>
+
+      <h3>Model zoo</h3>
+      <p>25+ models under <code>qlib/contrib/model/</code>: LightGBM, XGBoost, CatBoost, linear/ensemble methods, and a full PyTorch neural stack (LSTM/GRU/ALSTM/GATS/Transformer/TCN/TRA/AdaRNN and more), all behind a common <code>fit</code>/<code>predict</code> interface, instantiated from YAML. Tree models are thin, easily-standalone wrappers; the time-series/RL variants are tightly coupled to Qlib's <code>Dataset</code>/<code>Sampler</code> classes and much harder to extract.</p>
+
+      <h3>Backtesting engine</h3>
+      <p>Event-driven, bar-by-bar simulation (<code>Account</code>/<code>Position</code> state carried forward through an <code>Executor</code>/<code>Exchange</code> loop) with vectorized data structures underneath for speed — structurally look-ahead-safe by forward-only calendar stepping, the same philosophy QuantOS's own T+1 fill invariant already implements. Cost model: <code>open_cost</code>/<code>close_cost</code>/<code>min_cost</code>/slippage-band parameters — directly comparable to (and no more sophisticated than) QuantOS's own <code>transaction_costs.py</code>. Daily-bar is the default and only well-supported path; intraday exists via a separate, materially heavier "Nested Decision Execution" framework, and an <strong>open, unresolved issue (#1846)</strong> confirms the <code>Account</code> class currently hardcodes daily frequency regardless of config — the intraday path doesn't actually work as documented.</p>
+
+      <h3>Portfolio / strategy layer</h3>
+      <p><strong>TopkDropoutStrategy</strong> — hold K top-ranked names, drop the D worst each rebalance, replace with D best candidates. This is, functionally, exactly QuantOS's own Momentum design (hold top-10, weekly rebalance). Finding this pattern independently converged on in Qlib is a validation of the existing design, not a reason to import Qlib's implementation of it. <code>WeightStrategyBase</code> is a clean subclass-one-method extension point worth referencing as a shape when QuantOS builds its own <code>Strategy</code> interface (already planned, Blueprint Phase 3).</p>
+
+      <h3>Risk engine</h3>
+      <p><strong>Thin — backtest performance analytics, not a live risk system.</strong> <code>risk_analysis</code> produces Sharpe/Information Ratio/MaxDD with-and-without-cost. No evidence anywhere in docs, source tree naming, or issue search of real-time correlation matrices, factor-exposure decomposition, position/sector limits, or a kill switch. This does not close QuantOS's F6 (no portfolio-level risk engine) at all — Qlib doesn't have that subsystem either.</p>
+
+      <h3>Experiment tracking &amp; workflow</h3>
+      <p><code>Recorder</code> is a thin wrapper around <strong>MLflow</strong> (<code>MLflowExpManager</code>) — <code>mlflow ui</code> works directly on its tracking directory. <code>qrun config.yaml</code> drives the full data&rarr;train&rarr;backtest&rarr;eval pipeline via a <code>{class, module_path, kwargs}</code> instantiation triple — a clean, genuinely reusable configuration pattern independent of the rest of Qlib. Reproducibility caveat: persistence is pickle-based, and the docs explicitly warn this can break across differing environments — a real risk, not a guarantee, for a project that treats exact reproducibility as a design requirement.</p>
+
+      <h3>Deployment / online serving</h3>
+      <p>Explicitly research-grade by the project's own admission: "generating orders for the next trading day is <strong>not supported</strong> due to limitations of public data," and a source comment flags <code>delay_prepare</code> as not properly implemented. Online serving gets you to "today's model prediction," not an order — the signal-to-broker gap is entirely unaddressed, same gap QuantOS already has.</p>
+
+      <h3>Dependencies, license, Windows fit</h3>
+      <p>MIT license, fully permissive. Python 3.8&ndash;3.12. Build requires a <strong>Cython C extension</strong> (<code>rolling.pyx</code>) unless a prebuilt wheel matches exactly — and the official docs plainly state "recommended to use Qlib in Linux," with Docker as the stated Windows escape hatch (unusable given this project's no-Docker footprint). Two <strong>open, unresolved</strong> Windows-specific build issues were found (#1769 — MSVC linker failure building the Cython extension from source; #1927 — joblib/Windows data-loading incompatibility). <code>pip install pyqlib</code> from a prebuilt wheel is probably fine; anything requiring source/editable install — likely, if lifting individual pieces — is the exposed edge, on exactly this project's platform.</p>
+
+      <h3>Project health</h3>
+      <p>46,164★, 7,352 forks, 463 open issues, MIT — but <strong>last push 2026-04-22</strong>, roughly three months stale relative to today, and no release found after v0.9.7 (2025-08-15) in an otherwise semi-annual cadence. Bus-factor concentration is real: one contributor (<code>you-n-g</code>) accounts for ~48% of top-contributor commits, top 3 for ~70% — classic single-maintainer-plus-lab pattern, not a broad community. Microsoft's visible newer investment is <strong>RD-Agent</strong>, an LLM-agent framework for automated factor/model discovery built <em>on top of</em> Qlib — read as Qlib itself settling into "stable infrastructure, not much new energy" phase.</p>
+
+      <div class="callout"><strong>The load-bearing question, answered:</strong> can any Qlib subsystem be lifted in isolation, or does using it mean buying the whole framework? Factor formulas and a single tree model: <strong>yes, cleanly separable</strong> — copy the math. Strategy-shape and config-triple patterns: <strong>separable as a design reference</strong>, not as imported code. The data layer, backtest engine, Recorder/MLflow wrapper, and online-serving stack: <strong>no</strong> — all assume Qlib's calendar, instrument-universe files, binary storage layout, and <code>Position</code>/<code>Order</code>/<code>Account</code> object graph. There is no middle path to "just use the good 20%" for those four.</div>
+    </section>
+
+    <section id="s3">
+      <p class="sec-num">03 / 13</p>
+      <h2>TradingAgents Evaluation</h2>
+      <p class="muted">Verified against the live repo (via GitHub API and raw source), the arXiv paper (2412.20138, v7 full text), and open issue/PR history — not summarized from memory.</p>
+
+      <h3>Architecture</h3>
+      <p>Genuine <strong>LangGraph</strong> <code>StateGraph</code> — a real DAG with conditional edges, compiled once and invoked per ticker+date. Split cleanly across six components (<code>GraphSetup</code>, <code>ConditionalLogic</code>, <code>Propagator</code>, <code>Reflector</code>, <code>SignalProcessor</code>, <code>Checkpointer</code>). Optional SQLite checkpointing gives crash recovery, keyed by ticker+date+graph-shape.</p>
+
+      <h3>Agent framework / decision process</h3>
+      <p>Four analyst agents (market, sentiment, news, fundamentals) each with real tool-calling loops over live data sources &rarr; Bull/Bear Researcher debate, <strong>fixed at 2 turns by config, not by convergence</strong> &rarr; Research Manager (structured-output investment plan) &rarr; Trader (transaction proposal) &rarr; three fixed-persona Risk Debators (Aggressive/Conservative/Neutral, similarly fixed-round, not consensus-terminated) &rarr; <strong>Portfolio Manager</strong>, the final gate. Reading the Portfolio Manager's source directly: it builds a prompt from the debate history and returns whatever a structured-output LLM call produces. <strong>No position sizing, no VaR/volatility calculation, no exposure-limit check, no stop-loss logic anywhere in this path</strong> — the entire "risk management" layer is three LLM personas arguing, not code. A community PR (#634, open, unmerged) explicitly proposes adding deterministic risk guardrails — its existence as an unmerged proposal is itself confirmation that shipped <code>main</code> has none.</p>
+
+      <h3>LLM orchestration</h3>
+      <p>Genuinely provider-agnostic: native clients for Anthropic, Google Gemini, Azure OpenAI, AWS Bedrock, plus OpenAI-compatible routing for OpenAI, xAI, DeepSeek, Qwen, GLM, MiniMax, OpenRouter, Mistral, Kimi, Groq, NVIDIA NIM, and <strong>Ollama</strong> (local, key-optional) via a lazy-loading provider factory. Two-tier model selection (<code>deep_think_llm</code> for the two highest-stakes nodes, <code>quick_think_llm</code> for the rest) — a clean, genuinely reusable abstraction independent of the rest of the app.</p>
+
+      <h3>Signal generation</h3>
+      <p>Real integrations, not stubs: Yahoo Finance / Alpha Vantage (price, fundamentals), <code>stockstats</code> (deterministic technical indicators), Reddit and StockTwits (sentiment), FRED (macro), Polymarket (prediction markets). All degrade gracefully on failure rather than crash. Vendor selection per data category is explicit and respected, not silently substituted.</p>
+
+      <h3>Memory</h3>
+      <p><strong>Not a vector store today.</strong> Current <code>main</code> uses an append-only markdown log with return-based LLM reflection after outcomes are known — a real architectural simplification from an earlier ChromaDB-embeddings version (visible in closed issue #111) that has since been fully removed. Five most-recent same-ticker entries plus three cross-ticker reflections are injected into the Portfolio Manager's prompt as context.</p>
+
+      <h3>Determinism — the decisive finding</h3>
+      <p>The project's own configuration comment states plainly: no setting makes LLM output bit-identical across runs, and reasoning-tier models (the <code>deep_think</code> tier used for the two most consequential nodes) largely ignore temperature entirely. No seed parameter exists anywhere in the LLM client layer. <strong>This is admitted, permanent, and structural</strong> — not a bug to be fixed in a future release. QuantOS's own validation discipline treats exact backtest reproducibility as proven and load-bearing (3 consecutive byte-identical production runs, §8/§9 of the audit). These two properties cannot coexist inside the same decision path.</p>
+
+      <h3>Token cost &amp; latency</h3>
+      <p>16&ndash;22 LLM calls per ticker per decision cycle (per a maintainer's own root-cause writeup in issue #750), with a <strong>documented 0% prompt-cache hit rate</strong> — an acknowledged, still-open inefficiency costing an estimated 30&ndash;40% overhead versus a cache-friendly design. A real user (issue #111) reported ~13 minutes wall-clock for a single ticker/date run. Stages run sequentially by default; a parallelization attempt (PR #634, unmerged) claims a 3.5&times; speedup on just the analyst phase. Weekly cadence tolerates minutes-scale latency <em>per name</em>, but this system was designed as a single-ticker deep-dive tool — running it across a 459-name Nifty 500 universe every week, even just to screen candidates, is not a scaling exercise, it's a different problem the architecture wasn't built for.</p>
+
+      <h3>Production suitability</h3>
+      <p>No brokerage/execution integration exists anywhere in the tree — the paper's own authors list live deployment as future work. Output stops at a rated signal (Buy/Overweight/Hold/Underweight/Sell); no order routing, fill/slippage modeling, or live circuit-breaker exists.</p>
+
+      <h3>Research validity of the original paper</h3>
+      <p>Backtest window: 5 months (Jun&ndash;Nov 2024), 6 large-cap US tech tickers (AAPL, GOOGL, AMZN, NVDA, MSFT, META), reporting Sharpe ratios up to 8.21 against weak baselines (buy-and-hold, MACD, simple MA crossovers) — figures characteristic of short-window/small-N overfitting, not validated live-trading evidence, and the authors report no out-of-sample or live results. Look-ahead bias from tool-fetched news is genuinely, actively addressed (news-window filtering, unit-tested — <code>tests/test_news_lookahead.py</code>, CHANGELOG 0.3.0/0.3.1 fixes) — real engineering discipline. But this cannot touch the deeper, unfixable-by-prompt-engineering problem: an LLM's parametric training-data knowledge of how a stock actually performed historically can leak into its reasoning regardless of what tools it's given. This exact critique class is documented independently in the literature (arXiv 2601.13770, "Look-Ahead-Bench"; arXiv 2605.24564) as an open, unsolved problem for LLM-based backtesting generally.</p>
+
+      <h3>India-market fit</h3>
+      <p>Basic NSE/BSE ticker-suffix awareness exists (<code>benchmark_map</code> handles <code>.NS</code>&rarr;<code>^NSEI</code>). A community fork attempt (issue/PR #1002, 53 commits ahead of upstream) confirms this is <strong>not production-ready for Indian equities out of the box</strong> — it had to add India-specific validation, defaults, and fallback paths, and still explicitly excludes live broker execution.</p>
+
+      <h3>Dependencies, license, project health</h3>
+      <p>Apache-2.0 (permissive, express patent grant, no copyleft). Heavy install: <code>langchain</code>/<code>langgraph</code> family, multiple provider SDKs, <code>backtrader</code>, and an unreferenced <code>redis&gt;=6.2.0</code> dependency (declared in <code>pyproject.toml</code>, zero references anywhere in the source tree — a loose end, not a red flag). <strong>Genuinely healthy project</strong>: 92,655★, 47 commits in the trailing 30 days, real CI (pytest across Python 3.10&ndash;3.13, ruff, clean-install smoke test), 40+ external contributors credited in a single release's changelog — the opposite maintenance-risk profile from Qlib.</p>
+
+      <div class="callout crit"><strong>The load-bearing finding:</strong> project health, engineering discipline, and provider-agnostic LLM plumbing are all genuinely good here — better, in several respects, than Qlib's. None of that matters for this decision, because the one property that does matter — can the same inputs reproducibly produce the same trading decision — is answered no, by the project's own documentation, as a permanent architectural property rather than a fixable gap.</div>
+    </section>
+
+    <section id="s4">
+      <p class="sec-num">04 / 13</p>
+      <h2>Architecture Comparison</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Dimension</th><th>QuantOS today</th><th>QuantOS target (already blueprinted)</th><th>Qlib</th><th>TradingAgents</th></tr></thead>
+        <tbody>
+          <tr><td>Data layer</td><td>yfinance, current-only, F1/F9 fabricated universe</td><td>Custom <code>DataProvider</code> port + PIT store (Phase 2)</td><td>Binary store + expression engine; PIT for fundamentals only, no NSE adapter</td><td>yfinance/Alpha Vantage, real but US-centric, no PIT</td></tr>
+          <tr><td>Backtest engine</td><td>Proven look-ahead-free (T+1), byte-identical deterministic</td><td>Unchanged, mechanical port to <code>Strategy</code> interface</td><td>Event-driven, same forward-only philosophy; daily-bar reliable, intraday broken (#1846)</td><td>No dedicated backtest engine of its own; relies on <code>backtrader</code> dep, unverified usage</td></tr>
+          <tr><td>Portfolio construction</td><td>Equal-weight top-10, manual</td><td>Custom <code>portfolio</code> module (sizing, constraints)</td><td>TopkDropoutStrategy / WeightStrategyBase — same shape as QuantOS's existing design</td><td>None — LLM prose recommendation only, no weights</td></tr>
+          <tr><td>Risk engine</td><td>Per-strategy stop-loss only; 0/5 portfolio-level (F6)</td><td>Pre-trade gate + persisted kill switch, blunt code-enforced limits (§9 of Blueprint)</td><td>Backtest analytics only (Sharpe/IR/MDD); no live exposure/limits/kill-switch</td><td>Three LLM personas debating; zero code-enforced limits; guardrail PR unmerged</td></tr>
+          <tr><td>Execution / brokers</td><td>Zero — no order routing, no broker code</td><td><code>execution</code> + <code>brokers</code> modules, paper-only until SEBI clears (Phase 6/8)</td><td>Order-generation for next-day self-admittedly unsupported</td><td>None anywhere in the tree; paper's own authors list this as future work</td></tr>
+          <tr><td>Experiment tracking</td><td>None — params duplicated, no run manifest (F8)</td><td>Run manifest + git SHA (Phase 5)</td><td>MLflow wrapper (<code>Recorder</code>), pickle-based, cross-env fragile</td><td>N/A — not an experiment-tracking tool</td></tr>
+          <tr><td>Configuration</td><td>Module-level constants, duplicated, unenforced</td><td>Typed <code>config</code> + <code>strategies_registry/*.yaml</code> (Phase 1)</td><td><code>{class, module_path, kwargs}</code> YAML DI triple — clean, portable pattern</td><td>Single <code>default_config.py</code>, per-role two-tier model selection — clean pattern</td></tr>
+          <tr><td>Testing</td><td>5 of ~22 modules, gated <code>--selftest</code>, no CI</td><td>pytest suite, CI-wired (Phase 1/5)</td><td>No standout testing discipline found</td><td>61 test files, CI matrix across Python 3.10&ndash;3.13 — genuinely strong example</td></tr>
+          <tr><td>Determinism requirement</td><td>Proven, load-bearing (3 byte-identical runs)</td><td>Preserved by design (golden-file regression at every migration step)</td><td>Deterministic given fixed inputs (no LLM in the loop)</td><td><strong>Admittedly non-deterministic on reasoning-tier models — no fix exists</strong></td></tr>
+          <tr><td>License</td><td>N/A (private)</td><td>N/A</td><td>MIT</td><td>Apache-2.0</td></tr>
+          <tr><td>Windows fit</td><td>Native (the only platform)</td><td>Native by design</td><td>"Recommended on Linux"; open unresolved Windows build issues; Docker escape hatch unusable here</td><td>Pure Python/API calls — no native-build risk</td></tr>
+          <tr><td>NSE/India fit</td><td>Native (built for it, with known gaps)</td><td>Native by design</td><td>No NSE adapter; would require a full custom collector</td><td>Ticker-suffix aware only; community fork needed real work to get further</td></tr>
+          <tr><td>Maintenance risk</td><td>Solo operator, all risk internal</td><td>Same, mitigated by shared library + CI (Phase 1)</td><td>Bus-factor concentrated (~48% one contributor), 3mo-stale push, MS attention shifting to RD-Agent</td><td>Healthy bazaar community, but fast-moving (47 commits/30d) — its own tax on a determinism-first system</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s5">
+      <p class="sec-num">05 / 13</p>
+      <h2>Subsystem Decision Matrix</h2>
+      <div class="legend-row">
+        <span class="verdict-chip adopt">ADOPT</span> reuse directly, minimal change
+        <span class="verdict-chip adapt">ADAPT</span> reimplement the pattern natively
+        <span class="verdict-chip refonly">REFERENCE</span> study, validate design, no code moves
+        <span class="verdict-chip reject">REJECT</span> do not use, from either source
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Subsystem</th><th>Verdict</th><th class="evid" style="max-width:none">Rationale</th></tr></thead>
+        <tbody>
+          <tr><td>Data</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">Neither ships an NSE/BSE adapter. Qlib's PIT schema is a useful reference for the fundamentals-as-of-date problem once a real vendor is picked (Blueprint Phase 2) — the vendor decision, not the framework, is the actual blocker.</td></tr>
+          <tr><td>Research</td><td><span class="verdict-chip refonly">REFERENCE</span></td><td class="evid" style="max-width:none">QuantOS's own CAPM falsification chain is already more rigorous applied-research than either project ships as tooling. Qlib's separation of research from production code (already independently planned as Blueprint module 01) is a validated organizational pattern, not new code to take.</td></tr>
+          <tr><td>Backtesting</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">QuantOS's own engine is already proven look-ahead-free and byte-identical deterministic. Qlib's engine adds nothing not already achieved, at the cost of the <code>Position</code>/<code>Order</code>/<code>Account</code> object graph and the C-extension build. Its cost-model parameterization validates <code>transaction_costs.py</code>'s existing shape — nothing to import.</td></tr>
+          <tr><td>Validation</td><td><span class="verdict-chip refonly">REFERENCE</span></td><td class="evid" style="max-width:none">TradingAgents' unit-tested look-ahead-safe news window (<code>test_news_lookahead.py</code>) is a good pattern reference for QuantOS's own planned CI bias-detector suite (Blueprint Phase 5) — relevant only if/when news data ever enters the pipeline.</td></tr>
+          <tr><td>Experiment tracking</td><td><span class="verdict-chip adapt">ADAPT</span></td><td class="evid" style="max-width:none">Adopt <strong>MLflow directly</strong> when Blueprint Phase 5 starts — it's the mature, standard tool Qlib's <code>Recorder</code> merely wraps. Taking Qlib's wrapper adds indirection for zero benefit at this scale.</td></tr>
+          <tr><td>Feature engineering</td><td><span class="verdict-chip adopt">ADOPT</span></td><td class="evid" style="max-width:none">Port the Alpha158 formulas relevant to equity factors (momentum/quality) into native pandas functions. They're expression strings, not framework-coupled — cleanly separable, real time saved.</td></tr>
+          <tr><td>Factor library</td><td><span class="verdict-chip adopt">ADOPT</span></td><td class="evid" style="max-width:none">Same as above — selectively, for the non-frozen Quality Factor strategy specifically, not Momentum.</td></tr>
+          <tr><td>Portfolio construction</td><td><span class="verdict-chip refonly">REFERENCE</span></td><td class="evid" style="max-width:none">TopkDropoutStrategy validates the existing equal-weight-top-N design as a recognized institutional pattern. <code>WeightStrategyBase</code>'s one-method extension shape is worth mirroring when the <code>Strategy</code> interface is built (Blueprint Phase 3) — reimplemented, not imported.</td></tr>
+          <tr><td>Risk engine</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">The clearest finding in this whole review. Qlib's risk tooling is backtest analytics only. TradingAgents' is LLM debate with zero code-enforced limits. QuantOS's own already-designed pre-trade gate + persisted kill switch (Blueprint §9) is strictly better than both. Building it is unblocked by neither external project — it's original work either way.</td></tr>
+          <tr><td>Execution</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">Zero real order-routing code in either project. Qlib self-admits next-day order generation isn't supported; TradingAgents' authors list live execution as future work. No shortcut exists here in either OSS project.</td></tr>
+          <tr><td>Broker abstraction</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">Neither integrates any broker, Indian or otherwise. The already-flagged OpenAlgo evaluation (PRD P1, unrelated to this review) remains the right candidate to assess here, not either of these two.</td></tr>
+          <tr><td>Monitoring</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">Neither project ships alerting/monitoring. QuantOS's own planned Telegram <code>AlertSink</code> (Blueprint Phase 7) is unaffected either way.</td></tr>
+          <tr><td>Dashboard</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">Neither ships a reusable dashboard framework beyond notebook plots. QuantOS's own dashboard is deliberately sequenced last (Blueprint Phase 9) already — correctly so.</td></tr>
+          <tr><td>Configuration</td><td><span class="verdict-chip refonly">REFERENCE</span></td><td class="evid" style="max-width:none">Qlib's <code>{class, module_path, kwargs}</code> YAML dependency-injection triple is a clean pattern worth reflecting in QuantOS's own <code>config</code>/<code>strategies_registry</code> design (Blueprint Phase 1) if that level of flexibility is ever wanted — not required now, and not a code import either way.</td></tr>
+          <tr><td>Testing</td><td><span class="verdict-chip refonly">REFERENCE</span></td><td class="evid" style="max-width:none">TradingAgents' CI setup (pytest matrix, ruff, clean-install smoke test) is a genuinely good template to study when standing up QuantOS's own CI (Blueprint Phase 1) — a pattern to imitate, not a dependency to add.</td></tr>
+          <tr><td>Automation</td><td><span class="verdict-chip refonly">REFERENCE</span></td><td class="evid" style="max-width:none">LangGraph's SQLite checkpointing (crash-safe resume, keyed by run signature) is a relevant reference if QuantOS's own multi-strategy pipeline ever grows complex enough to need a real orchestration engine — not the case today, where the "pipeline" is 4 scripts and a scheduler.</td></tr>
+          <tr><td>LLM integration</td><td><span class="verdict-chip adapt">ADAPT</span></td><td class="evid" style="max-width:none">Already correctly deferred in the PRD's own non-goals ("no verified Indian retail precedent... after live capital is stable"). If/when that phase starts, mirror TradingAgents' provider-agnostic client-factory pattern (including local Ollama support, which matches this project's own RTX 3050 hardware ceiling for anything self-hosted) rather than hand-rolling one — not TradingAgents itself.</td></tr>
+          <tr><td>Agent orchestration</td><td><span class="verdict-chip reject">REJECT</span></td><td class="evid" style="max-width:none">LangGraph is legitimate infrastructure in the abstract, but pulling it in today for a system whose entire current "workflow" is four Python scripts and a PowerShell scheduler is complexity years ahead of the actual need. Revisit only if/when Phase 5 LLM work is real and a genuine multi-step agent graph is needed.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="s6">
+      <p class="sec-num">06 / 13</p>
+      <h2>Recommended Components</h2>
+      <p>Six items, all either applicable only to non-frozen strategies, or deferred to a not-yet-built module, or deferred to post-live-capital per the PRD's own existing non-goals. None require installing Qlib or TradingAgents as dependencies.</p>
+      <div class="grid-2">
+        <div class="card">
+          <h4>1 &middot; Alpha158 factor formulas (selective)</h4>
+          <p class="muted">Port the momentum/quality-relevant subset of Alpha158's expression-string formulas into native pandas functions, for use in <strong>Quality Factor</strong> (not Momentum, frozen). Real, immediate time saved — these are documented, tested formulas, not something to re-derive from scratch.</p>
+        </div>
+        <div class="card">
+          <h4>2 &middot; TopkDropoutStrategy / WeightStrategyBase shape</h4>
+          <p class="muted">Reference the rank &rarr; hold-K &rarr; drop-D &rarr; reweight decomposition when building the <code>Strategy</code> interface (Blueprint Phase 3). Confirms the existing design is institutionally recognized — reimplement natively, don't import <code>qlib.contrib.strategy</code>.</p>
+        </div>
+        <div class="card">
+          <h4>3 &middot; Qlib's YAML config-injection triple</h4>
+          <p class="muted"><code>{class, module_path, kwargs}</code> as the shape for QuantOS's own <code>strategies_registry/*.yaml</code> (Blueprint Phase 1), if/when that level of runtime flexibility is wanted. Pattern only.</p>
+        </div>
+        <div class="card">
+          <h4>4 &middot; MLflow, adopted directly</h4>
+          <p class="muted">Skip Qlib's <code>Recorder</code> wrapper entirely — take MLflow itself when Blueprint Phase 5 (experiment tracking) starts. One well-known dependency, not a framework.</p>
+        </div>
+        <div class="card">
+          <h4>5 &middot; TradingAgents' CI/testing template</h4>
+          <p class="muted">Study the pytest-matrix + ruff + clean-install-smoke-test structure when standing up QuantOS's own CI (Blueprint Phase 1). A worked example of "what good CI looks like for a Python trading codebase," nothing to depend on.</p>
+        </div>
+        <div class="card">
+          <h4>6 &middot; Provider-agnostic LLM client pattern (deferred)</h4>
+          <p class="muted">If/when the PRD's already-deferred LLM signal layer (Phase 5, post-live-capital) is ever built, mirror TradingAgents' multi-provider client-factory pattern — including Ollama-local support, the only realistic self-hosted option given the RTX 3050's 4GB VRAM ceiling. Not active work today.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <p class="sec-num">07 / 13</p>
+      <h2>Rejected Components</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h4>From Qlib — rejected wholesale</h4>
+          <ul>
+            <li>Binary data store + expression-engine runtime (no NSE support, C-extension Windows build risk)</li>
+            <li>PIT database subsystem (doesn't solve survivorship bias either; would need building the same NSE vendor integration regardless)</li>
+            <li>Backtest engine / <code>Position</code>-<code>Order</code>-<code>Account</code> object graph (QuantOS's own engine already proven adequate)</li>
+            <li><code>Recorder</code>/MLflow wrapper (take MLflow directly instead)</li>
+            <li>Online serving stack (self-admittedly incomplete, doesn't reach order generation)</li>
+            <li>RL / time-series model variants (tightly coupled to Qlib's internals, not worth the coupling for models not currently in use)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>From TradingAgents — rejected wholesale</h4>
+          <ul>
+            <li>LangGraph debate/consensus architecture (premature complexity at current scale)</li>
+            <li>LLM-as-Portfolio-Manager (zero code-enforced risk math — strictly worse than QuantOS's own designed risk gate)</li>
+            <li>LLM-as-Risk-Manager (three personas debating is not a risk engine)</li>
+            <li>Non-deterministic decision path of any kind, anywhere near the frozen strategy or the live risk gate</li>
+            <li><code>backtrader</code> dependency and the unreferenced <code>redis</code> dependency (unexplained, unneeded)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout crit"><strong>Standing rule, not just for this review:</strong> no LLM-generated output — from TradingAgents' pattern or any future in-house LLM work — is ever wired as a decision-maker for position sizing, risk limits, or order placement. If an LLM signal layer is ever built (PRD's own deferred Phase 5), its output feeds in as one more analyst-style input to QuantOS's existing deterministic scoring, never as the thing that decides.</div>
+    </section>
+
+    <section id="s8">
+      <p class="sec-num">08 / 13</p>
+      <h2>Migration Strategy</h2>
+      <p class="muted">Sequenced against the existing Target Architecture Blueprint's own Phase 0&ndash;9 roadmap — nothing here reorders it. Nothing here touches <code>momentum_backtest.py</code> or <code>paper_trader.py</code>'s trading logic.</p>
+      <ol class="crit-path">
+        <li><div class="t">Immediate — after validation, not before</div><div class="d">"Immediate" means: safe to start once the 13-week Prospective Validation freeze allows non-frozen work, i.e. now, on non-Momentum surfaces only. Port the relevant Alpha158 formula subset into <code>factor_attribution.py</code>'s sibling tooling or a new pure-function module, targeting <strong>Quality Factor</strong> only. Zero risk to the frozen strategy since it's a different, non-frozen codebase path.</div></li>
+        <li><div class="t">Medium term — before paper/live (Blueprint Phase 1&ndash;5)</div><div class="d">When Blueprint Phase 1 (<code>config</code> skeleton) is built: shape it around Qlib's DI-config triple. When Blueprint Phase 3 (<code>Strategy</code> interface) is built: shape it around TopkDropoutStrategy/WeightStrategyBase's rank-hold-drop decomposition. When Blueprint Phase 5 (experiment tracking) is built: adopt MLflow directly, not Qlib's wrapper. When Blueprint Phase 1's CI is stood up: use TradingAgents' pytest/ruff/smoke-test structure as the template.</div></li>
+        <li><div class="t">Long term — institutional, post-live (matches PRD's existing Phase 5/LLM non-goal)</div><div class="d">Only after Blueprint Phase 8 (live broker integration) is stable and the PRD's own "after live capital is stable" condition is met: build an optional <code>quantos_core.llm</code> port module modeled on TradingAgents' provider-agnostic client factory. Wire its output as one additional analyst-style signal input, never as a decision-maker — see the standing rule in §7.</div></li>
+      </ol>
+      <div class="callout good"><strong>What doesn't change:</strong> the SEBI compliance checklist and the 13-week validation count remain the two items actually gating progress, exactly as the existing audit and blueprint already state. This review adds zero new dependencies to that critical path.</div>
+    </section>
+
+    <section id="s9">
+      <p class="sec-num">09 / 13</p>
+      <h2>Estimated Engineering Savings</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Item</th><th>Estimated time saved</th><th>Applies to</th><th>Condition</th></tr></thead>
+        <tbody>
+          <tr><td>Alpha158 formula subset, ported</td><td class="num">2&ndash;4 days</td><td>Quality Factor strategy</td><td>Available now, non-frozen</td></tr>
+          <tr><td>Strategy/config pattern reference (no code)</td><td class="num">1&ndash;2 days design time</td><td>Blueprint Phase 1 &amp; 3</td><td>When those phases start</td></tr>
+          <tr><td>MLflow adoption (vs. building tracking from scratch)</td><td class="num">3&ndash;5 days</td><td>Blueprint Phase 5</td><td>MLflow itself, not via Qlib</td></tr>
+          <tr><td>CI template reference</td><td class="num">1 day</td><td>Blueprint Phase 1</td><td>Pattern only</td></tr>
+          <tr><td>LLM provider-abstraction pattern (deferred)</td><td class="num">~1 week, if/when built</td><td>Post-live LLM phase</td><td>Speculative — PRD non-goal today</td></tr>
+          <tr style="font-weight:650"><td>Total realistic near-term savings</td><td class="num">~1&ndash;2 weeks</td><td colspan="2">All non-critical-path; none accelerates the 13-week gate or SEBI clearance</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted">What this deliberately does not claim: neither framework shortens the path to live capital. The two hardest items — a real NSE point-in-time data vendor, and a real portfolio-level risk engine — are unsolved in both external projects and remain exactly as much original work as before this review.</p>
+    </section>
+
+    <section id="s10">
+      <p class="sec-num">10 / 13</p>
+      <h2>Technical Risks</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h4>Overengineering</h4>
+          <p class="muted">The single largest real risk of this review existing at all: getting distracted chasing a 46k/93k-star framework instead of finishing the 13-week validation gate that's the project's own stated single milestone. Mitigated only by discipline — the recommendations above are deliberately small and deferred.</p>
+        </div>
+        <div class="card">
+          <h4>Vendor / architecture lock-in</h4>
+          <p class="muted">Qlib's binary format + calendar/instrument files, and TradingAgents' LangGraph state-schema coupling, are two different lock-in shapes. Neither is being adopted wholesale, so neither risk materializes — worth stating as the reason wholesale adoption was rejected, not just a caveat.</p>
+        </div>
+        <div class="card">
+          <h4>Maintenance burden / dead-project risk</h4>
+          <p class="muted">Qlib: real. Bus-factor-concentrated (~48% one contributor), 3-month-stale push, Microsoft's attention visibly shifting to RD-Agent. A solo operator debugging someone else's C-extension build failure on Windows is exactly the failure mode to avoid. TradingAgents: healthier (bazaar contributors, active CI) but iterates fast — itself a tax on a system that values stability over features.</p>
+        </div>
+        <div class="card">
+          <h4>Dependency explosion</h4>
+          <p class="muted">TradingAgents' full stack (langchain + langgraph + multiple provider SDKs + an unreferenced redis dep) is heavy for a 6,000-LOC solo project. Qlib pulls a Cython build chain and version-pinned numpy/scipy that could clash with the existing environment. Neither is being installed, so this risk is avoided by the recommendation itself.</p>
+        </div>
+        <div class="card">
+          <h4>Research reproducibility</h4>
+          <p class="muted">The starkest finding in this whole review. TradingAgents is admittedly, permanently non-deterministic on its highest-stakes nodes. Any contamination of this pattern into the strategy layer — even accidentally, even "just for research" — breaks the exact property (§8/§9 of the audit) the project has spent real engineering effort proving.</p>
+        </div>
+        <div class="card">
+          <h4>Breaking deterministic execution / the frozen strategy</h4>
+          <p class="muted">Per <code>CONTEXT.md:14-36</code>, any change touching Momentum's alpha model, ranking, universe, or parameters restarts the 13-week validation clock. None of this review's recommendations touch that code — this is the explicit test every recommendation above was run through before being written down.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="s11">
+      <p class="sec-num">11 / 13</p>
+      <h2>Final Recommendation</h2>
+      <div class="verdict-total"><span class="n">Adopt fragments, reject both frameworks</span></div>
+      <p>Neither Qlib nor TradingAgents should be installed as a dependency. Both are legitimate, well-built projects for what they're actually for — a Linux-first institutional research platform, and a multi-agent LLM research demo respectively — and neither of those is what QuantOS, as a solo-operator Windows-laptop NSE momentum system in a frozen validation phase, currently is. Six small, specific ideas are worth harvesting (§6); everything else, including both runtimes wholesale, is rejected (§7) on engineering, licensing-adjacent maintenance, and — for TradingAgents specifically — categorical determinism grounds that no future release of either project changes.</p>
+      <h3>Committee notes</h3>
+      <div class="roles">
+        <div class="role-row"><div class="role">CTO</div><div class="say">The right call here isn't "which framework is better" — it's recognizing neither one is solving QuantOS's actual two hard problems. Approve the six harvested fragments, table everything else.</div></div>
+        <div class="role-row"><div class="role">Risk Systems Eng</div><div class="say">TradingAgents' Portfolio Manager is a worse risk engine than what's already sitting in the unbuilt Blueprint — zero numeric limits, LLM judgment as the final gate. That's a regression, not a feature, if anyone's ever tempted to wire it in.</div></div>
+        <div class="role-row"><div class="role">Principal Quant Research Eng</div><div class="say">Alpha158 is worth two to four days of formula-porting for Quality Factor. That's the whole tangible win here — everything else is validation of decisions already made, which has real value but isn't code.</div></div>
+        <div class="role-row"><div class="role">DevOps Architect</div><div class="say">Qlib's own docs tell you not to run it on Windows without Docker, and this project has no Docker. That's not a nice-to-have caveat, that's the platform saying no.</div></div>
+        <div class="role-row"><div class="role">OSS Governance</div><div class="say">MIT and Apache-2.0 are both fine licenses — this was never a licensing question. It's a fit question, and the answer is the same for both: good project, wrong shape for this system, right now.</div></div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <p class="sec-num">12 / 13</p>
+      <h2>Future QuantOS Architecture</h2>
+      <p>Unchanged from the existing Target Architecture Blueprint, annotated only where this review adds a specific, deferred reference — nothing here supersedes that document.</p>
+      <pre>quantos/
+├── pyproject.toml
+├── quantos_core/
+│   ├── config/        <span class="keep">→ unchanged; DI-config shape optionally borrowed from Qlib's {class,module_path,kwargs} pattern</span>
+│   ├── data/           <span class="keep">→ unchanged; custom NSE PIT provider — neither Qlib nor TradingAgents ships one</span>
+│   ├── factors/          <span class="new">→ + seeded with ported Alpha158 formulas (Quality Factor only)</span>
+│   ├── strategies/         <span class="keep">→ unchanged; TopkDropoutStrategy shape referenced, not imported</span>
+│   ├── portfolio/            <span class="keep">→ unchanged</span>
+│   ├── risk/                  <span class="keep">→ unchanged; already stronger than either external project's risk layer</span>
+│   ├── execution/               <span class="keep">→ unchanged</span>
+│   ├── brokers/                   <span class="keep">→ unchanged</span>
+│   ├── llm/                        <span class="new">→ NEW, optional, Phase 5-plus only — provider-agnostic client pattern
+│   │                                    modeled on TradingAgents' factory; output feeds analytics as ONE
+│   │                                    signal input, never wired to portfolio/risk/execution decisions</span>
+│   ├── analytics/                  <span class="keep">→ unchanged</span>
+│   ├── validation/                 <span class="keep">→ unchanged; look-ahead-safe-window test pattern referenced from TradingAgents if news data is ever added</span>
+│   ├── monitoring/                 <span class="keep">→ unchanged</span>
+│   ├── storage/                    <span class="keep">→ unchanged; MLflow adopted directly at Phase 5, not via Qlib's Recorder</span>
+│   └── utils/                      <span class="keep">→ unchanged</span>
+├── services/           <span class="keep">→ unchanged</span>
+├── strategies_registry/ <span class="keep">→ unchanged</span>
+├── tests/                <span class="keep">→ unchanged; CI structure modeled on TradingAgents' pytest/ruff/smoke-test setup</span>
+└── ...                     <span class="keep">→ everything else unchanged from the existing Blueprint</span></pre>
+      <p class="muted">Exactly one new module (<code>llm/</code>) and zero new runtime dependencies beyond what the existing Blueprint already planned. The rest of this tree was correct before this review and remains correct after it.</p>
+    </section>
+
+    <footer>QuantOS OSS Adoption Review &middot; institutional due diligence, no code written &middot; ground truth: (AI) QuantOS Independent Audit + Target Architecture Blueprint, both 2026-07-13 &middot; generated 2026-07-13</footer>
+  </main>
+</div>

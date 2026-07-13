@@ -1,0 +1,5 @@
+Empty by design (QuantOS Constitution, Part IX / ADR-031).
+Phase 0 repository organization only -- no content yet.
+Not a Python package: experiments holds non-code artifacts (see Constitution,
+Part III/Repository Structure) -- dated research output / versioned
+strategy-param YAML / Dockerfiles+CI config, respectively.

@@ -1,0 +1,22 @@
+# Fast, local checks only (lint + format-check). The full characterization
+# suite, golden-file comparison, and determinism verification run in CI
+# (.github/workflows/ci.yml) -- they're too slow (~5-60s each) for a
+# pre-commit hook that should stay near-instant.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: check-toml
+      - id: check-yaml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.21
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

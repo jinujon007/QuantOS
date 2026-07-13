@@ -1,0 +1,91 @@
+[project]
+name = "quantos-algotrader"
+version = "0.1.0"
+description = "QuantOS Momentum strategy — Phase 0 engineering baseline (research/paper-trading only, no live capital)"
+requires-python = ">=3.11"
+readme = "README.md"
+
+# Exact versions captured from the environment these scripts have actually
+# been running under (2026-07-13) — not "latest", not re-derived. Pinning
+# what's real is the whole point of this file (QuantOS Constitution, Part
+# III/Packaging: "a clean checkout must be reproducible from the lockfile
+# alone... no undocumented manual step").
+dependencies = [
+    "numpy==2.4.6",
+    "pandas==3.0.3",
+    "requests==2.34.2",
+    "scipy==1.17.1",
+    "yfinance==1.4.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.21",
+    "mypy==2.2.0",
+    "coverage==7.15.1",
+]
+
+# ── ruff (lint + format) ─────────────────────────────────────────────────
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# After `ruff format` + safe autofixes (F541 unnecessary f-string prefix,
+# I001 import sort — both provably behavior-invariant: same string output,
+# same names bound, verified by re-running the full test suite and a fresh
+# determinism check with byte-identical hashes to pre-format), these are
+# the real findings that remain in the six frozen scripts. Not fixed here
+# because fixing them means editing files this phase must not change.
+# Tracked explicitly, not hidden — full dated list in the Phase 0
+# execution report.
+#
+# E402 (module import not at top of file): every script's first lines are
+# `import sys` then `if hasattr(sys.stdout, "reconfigure"): ...` (a Windows
+# console UTF-8 fix) BEFORE the remaining imports — deliberate ordering,
+# not disorder. Moving it would risk the exact encoding bug it exists to
+# prevent, on a script this phase must not touch.
+# E501 (line too long): wide Rupee-formatted f-string print statements.
+# F841 (unused local variable) / F401 (unused import): real, harmless dead
+# code in the original scripts.
+"download_data.py" = ["F841"]
+"factor_attribution.py" = ["E402", "E501"]
+"momentum_backtest.py" = ["E402", "E501", "F841"]
+"paper_trader.py" = ["E402", "E501", "F841", "F401"]
+
+# ── mypy ──────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+# Strict mode is the Constitution's target for `quantos_core` once that
+# package exists (Phase 1+). These six root scripts are pre-typing, frozen,
+# untyped legacy code — mypy runs against them in CI (so type errors are at
+# least visible) but is not yet in --strict mode. Tightening this is a
+# Phase 1 migration decision, not a Phase 0 one.
+check_untyped_defs = true
+
+# ── pytest ────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "network: test makes a real network call (excluded from the default offline run)",
+]
+addopts = "-m 'not network' --strict-markers"
+
+# ── coverage.py ───────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["."]
+omit = ["venv/*", "tests/*", "tools/*", ".git/*"]
+
+[tool.coverage.report]
+# No enforced minimum yet: characterization tests exercise the real
+# code paths (load_price_matrix, run_backtest, print_metrics, the cost
+# model, both --selftest suites) but were written to pin CURRENT behavior,
+# not to hit every line/branch. A coverage floor is a Phase 1 decision,
+# once quantos_core's test pyramid (QuantOS Constitution, Part III) is
+# the thing being measured, not legacy scripts.
+show_missing = true

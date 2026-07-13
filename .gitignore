@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environment (1GB+, machine-specific, superseded by pyproject.toml + lockfile)
+venv/
+.venv/
+
+# Real secrets — never committed, .env.example is the template
+.env
+
+# Tool-specific telemetry/cache — not source
+.gstack/
+
+# OS
+Thumbs.db
+.DS_Store
