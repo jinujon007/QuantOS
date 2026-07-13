@@ -15,25 +15,36 @@ current_phase:
   number: 1
   name: quantos-core skeleton
   scope: extract config, storage, utils(logging) into quantos_core; zero change to the six frozen scripts' behavior
-  code_status: not_started  # quantos_core/{config,storage,utils}/ are still empty __init__.py stubs; WP-001 added typing/test scaffolding only, no logic
+  code_status: in_progress  # config module has real code (WP-002); storage/utils still empty stubs
   foundation_status: complete  # WP-001: strict mypy + import smoke test now gate quantos_core in CI
-  work_package_filed: false    # next WP (config/storage/utils extraction) not yet opened
+  work_package_filed: false    # next WP (storage or utils extraction) not yet opened
+
+modules:
+  config:
+    status: partial  # WP-002: environment resolution + typed/validated/immutable AppConfig, no file I/O yet
+    fields: [environment]
+    layered_config: not_implemented  # reserved as WP-006
+  storage: {status: empty_stub}
+  utils: {status: empty_stub}
 
 last_completed_work_package:
-  id: WP-001
-  name: Repository Foundation
+  id: WP-002
+  name: Configuration System
   date: "2026-07-13"
   phase: 1
 
 ci_gates:
   legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
-  quantos_core_mypy_strict: blocking         # WP-001
+  quantos_core_mypy_strict: blocking         # WP-001; now covers 18 source files incl. config (WP-002)
   quantos_core_import_smoke_test: blocking   # WP-001
   import_boundary_enforcement: not_yet_added # reserved as WP-005
 
 reserved_work_packages:
   - id: WP-005
     name: Architectural Import Boundary Enforcement
+    status: reserved_not_specified
+  - id: WP-006
+    name: Layered Configuration
     status: reserved_not_specified
 
 governing_documents:
@@ -48,12 +59,12 @@ governing_documents:
 
 metrics:
   digital_readiness_score: "53/100"  # Independent Audit, 2026-07-13, institutional bar
-  test_coverage_pct: 25              # Phase 0 baseline (TD-008)
+  test_coverage_pct: 26              # up from 25 (Phase 0 baseline); config module at 100%
 
 open_items:
   risks_total: 5
   risks_mitigated: 1
-  tech_debt_total: 10
+  tech_debt_total: 12
   tech_debt_resolved: 1
 
 repository:

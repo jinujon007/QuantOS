@@ -13,6 +13,7 @@ readme = "README.md"
 dependencies = [
     "numpy==2.4.6",
     "pandas==3.0.3",
+    "pydantic==2.13.4",
     "requests==2.34.2",
     "scipy==1.17.1",
     "yfinance==1.4.1",
@@ -61,6 +62,10 @@ select = ["E", "F", "I", "W"]
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
+# Required for mypy to understand pydantic BaseModel fields correctly
+# under strict mode (WP-002) — without it, generated __init__ signatures
+# are invisible to the type checker.
+plugins = ["pydantic.mypy"]
 # Strict mode is the Constitution's target for `quantos_core` once that
 # package exists (Phase 1+). These six root scripts are pre-typing, frozen,
 # untyped legacy code — mypy runs against them in CI (so type errors are at

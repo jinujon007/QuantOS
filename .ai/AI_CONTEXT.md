@@ -105,13 +105,17 @@ Validation: freeze in effect, 0/13 weekly rebalances observed.
 
 ## Current position
 
-Phase 0 complete. WP-000 (pre-Phase-1 repository reorganization — `docs/`
-hierarchy, empty `quantos_core` scaffolding) complete, 2026-07-13. WP-001
-(Repository Foundation — `mypy --strict` on `quantos_core`, CI-blocking;
-import-smoke-test scaffold; both gates green) also complete, 2026-07-13.
-`quantos_core` still carries zero logic — WP-001 was typing/test
-scaffolding only. Architectural import-boundary enforcement (Constitution
-Part II item 4, ADR-029) remains unmet, deliberately deferred and reserved
-as **WP-005**, not yet specified. Phase 1's actual config/storage/utils
-extraction has no work package filed yet — see `CURRENT_TASK.md` for exact
-scope and `PROJECT_STATE.yaml` for current metrics.
+Phase 0 complete. WP-000 (pre-Phase-1 repository reorganization) complete,
+2026-07-13. WP-001 (Repository Foundation — `mypy --strict` on
+`quantos_core`, CI-blocking; import-smoke-test scaffold) complete,
+2026-07-13. WP-002 (Configuration System) complete, 2026-07-13:
+`quantos_core.config` now has real code — a typed, immutable,
+strictly-validated `AppConfig` (one field, `environment`), constructed
+directly from `QUANTOS_ENV`/an explicit argument. No file I/O, no
+layering, no persistence format yet — deliberately deferred and reserved
+as **WP-006**. Architectural import-boundary enforcement (Constitution
+Part II item 4, ADR-029) also remains unmet, reserved as **WP-005**; its
+priority rose from Low to Medium the moment WP-002 landed real,
+unenforced module code (TD-010). `storage` and `utils` are still empty
+stubs. See `CURRENT_TASK.md` for exact scope and `PROJECT_STATE.yaml` for
+current metrics.
