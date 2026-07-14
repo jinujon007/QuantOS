@@ -9,6 +9,7 @@ missing artifact -> explicit absence, never a guess.
 """
 
 import json
+import re
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -102,6 +103,57 @@ def collect_journal(limit: int = 40) -> list[dict]:
     return [json.loads(r[1]) for r in rows]
 
 
+def collect_daily_run() -> dict:
+    """Outcome of the last unattended run, parsed from data/daily_run.log.
+
+    Closes the monitoring blind spot from the 2026-07-14 audit: the
+    runner logs FAILED/HALTED, but nothing surfaced it -- the console
+    could look healthy through a week of dead runs. Statuses: OK,
+    DEGRADED (a step failed), HALTED (kill switch), INCOMPLETE (run
+    started, never reached its end marker -- crash or scheduler kill).
+    """
+    path = REPO / "data" / "daily_run.log"
+    if not path.exists():
+        return {"available": False}
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if "=== daily run start ===" in line or "=== daily run ABORTED" in line:
+            start = i
+    if start is None:
+        return {"available": False}
+
+    block = lines[start:]
+    stamp = re.compile(r"^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (.*)$")
+    when = ""
+    steps: list[dict] = []
+    ended = False
+    for line in block:
+        m = stamp.match(line)
+        if not m:
+            continue  # raw step output, not a runner status line
+        when = when or m.group(1)
+        message = m.group(2)
+        if "=== daily run end ===" in message:
+            ended = True
+        elif "HALTED" in message:
+            steps.append({"step": message, "status": "HALTED"})
+        elif "FAILED" in message or "ABORTED" in message:
+            steps.append({"step": message, "status": "FAILED"})
+        elif message.endswith(" OK"):
+            steps.append({"step": message[:-3], "status": "OK"})
+
+    if any(s["status"] == "HALTED" for s in steps):
+        status = "HALTED"
+    elif any(s["status"] == "FAILED" for s in steps):
+        status = "DEGRADED"
+    elif not ended:
+        status = "INCOMPLETE"
+    else:
+        status = "OK"
+    return {"available": True, "when": when, "status": status, "steps": steps}
+
+
 def collect_project_state() -> dict:
     path = REPO / ".ai" / "PROJECT_STATE.yaml"
     if not path.exists():
@@ -119,5 +171,6 @@ def collect_all() -> dict:
         "equity": collect_equity(),
         "universe": collect_universe(),
         "journal": collect_journal(),
+        "daily_run": collect_daily_run(),
         "project": collect_project_state(),
     }

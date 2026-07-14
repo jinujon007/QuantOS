@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # one set of read models feeds both surfaces (WP-011).
 from api.collectors import (  # noqa: E402
     REPO,
+    collect_daily_run,
     collect_equity,
     collect_journal,
     collect_kill_switch,
@@ -92,8 +93,21 @@ def build_page() -> str:
     else:
         system_state, system_cls, system_note = "ACTIVE — INVESTED", "ok", f"paper mode · {len(holdings)} positions"
 
+    # -- last unattended run (data/daily_run.log) --
+    run = collect_daily_run()
+    if run.get("available"):
+        run_status = str(run["status"])
+        run_cls = {"OK": "ok", "HALTED": "wait", "DEGRADED": "crit", "INCOMPLETE": "crit"}.get(run_status, "wait")
+        run_note = f"last unattended run · {html.escape(str(run.get('when', '')))}"
+        failed_steps = [s["step"] for s in run.get("steps", []) if s["status"] != "OK"]
+        if failed_steps:
+            run_note = f"{html.escape(failed_steps[0])} · {html.escape(str(run.get('when', '')))}"
+    else:
+        run_status, run_cls, run_note = "NEVER RUN", "wait", "no daily_run.log yet — scheduled task hasn't fired"
+
     tiles = f"""
       <div class="cell state {system_cls}"><div class="v">{system_state}</div><div class="k">{system_note}</div></div>
+      <div class="cell state {run_cls}"><div class="v">{run_status}</div><div class="k">{run_note}</div></div>
       <div class="cell"><div class="v">{inr(paper.get("portfolio_value", 0.0))}</div><div class="k">paper portfolio (virtual)</div></div>
       <div class="cell"><div class="v" data-age-of="{html.escape(str(paper.get("last_updated", "")))}" data-warn-hours="30" data-crit-hours="96">—</div><div class="k">paper state freshness</div></div>
       <div class="cell"><div class="v" data-age-of="{html.escape(universe[0]["date"] if universe else "")}" data-warn-hours="192" data-crit-hours="360">—</div><div class="k">universe snapshot freshness</div></div>"""

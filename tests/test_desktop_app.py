@@ -33,9 +33,61 @@ def test_index_serves_the_app() -> None:
 
 def test_state_payload_shape() -> None:
     payload = client.get("/api/state").json()
-    for key in ("paper", "kill_switch", "strategy", "equity", "universe", "journal", "brokers"):
+    for key in ("paper", "kill_switch", "strategy", "equity", "universe", "journal", "brokers", "daily_run"):
         assert key in payload
     assert payload["strategy"]["params"]["top_n"] == 10
+
+
+def test_collect_daily_run_parses_last_block(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The console must surface the LAST unattended run's outcome — a week
+    of FAILED runs hiding in a log nobody reads was audit finding 9."""
+    import api.collectors as collectors
+
+    monkeypatch.setattr(collectors, "REPO", tmp_path)
+    log = tmp_path / "data" / "daily_run.log"
+    log.parent.mkdir(parents=True)
+
+    # no log yet
+    (tmp_path / "data").mkdir(exist_ok=True)
+    assert collectors.collect_daily_run() == {"available": False}
+
+    # healthy run (raw python output lines interleaved, no [ts] prefix)
+    log.write_text(
+        "[2026-07-14 15:40:01] === daily run start ===\n"
+        "some raw python output\n"
+        "[2026-07-14 15:41:10] paper_trader.py OK\n"
+        "[2026-07-14 15:41:12] console rebuild OK\n"
+        "[2026-07-14 15:41:12] === daily run end ===\n",
+        encoding="utf-8",
+    )
+    run = collectors.collect_daily_run()
+    assert run["status"] == "OK" and run["when"] == "2026-07-14 15:40:01"
+    assert [s["status"] for s in run["steps"]] == ["OK", "OK"]
+
+    # later degraded run must win over the earlier healthy one
+    with log.open("a", encoding="utf-8") as fh:
+        fh.write(
+            "[2026-07-15 15:40:01] === daily run start ===\n"
+            "[2026-07-15 15:41:10] paper_trader.py FAILED (exit 1)\n"
+            "[2026-07-15 15:41:12] console rebuild OK\n"
+            "[2026-07-15 15:41:12] === daily run end ===\n"
+        )
+    assert collectors.collect_daily_run()["status"] == "DEGRADED"
+
+    # halted (kill switch) is its own state, not a failure
+    with log.open("a", encoding="utf-8") as fh:
+        fh.write(
+            "[2026-07-16 15:40:01] === daily run start ===\n"
+            "[2026-07-16 15:40:05] paper_trader.py HALTED (kill switch engaged)\n"
+            "[2026-07-16 15:40:07] console rebuild OK\n"
+            "[2026-07-16 15:40:07] === daily run end ===\n"
+        )
+    assert collectors.collect_daily_run()["status"] == "HALTED"
+
+    # run that never reached its end marker = crash / scheduler kill
+    with log.open("a", encoding="utf-8") as fh:
+        fh.write("[2026-07-17 15:40:01] === daily run start ===\n[2026-07-17 15:41:10] paper_trader.py OK\n")
+    assert collectors.collect_daily_run()["status"] == "INCOMPLETE"
 
 
 def test_kill_switch_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

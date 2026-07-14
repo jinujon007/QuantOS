@@ -30,6 +30,15 @@ dev = [
     "coverage==7.15.1",
 ]
 
+# ── setuptools (TD-011) ──────────────────────────────────────────────────
+# Flat layout with 9 top-level directories (api, tools, tests, ...) makes
+# setuptools' auto-discovery refuse to build ("ambiguous packages"), which
+# broke the lockfile-regeneration method documented in requirements-lock.txt
+# (`pip install -e ".[dev]"`). Only quantos_core is the installable package;
+# everything else is repo scaffolding, scripts, or data.
+[tool.setuptools.packages.find]
+include = ["quantos_core*"]
+
 # ── ruff (lint + format) ─────────────────────────────────────────────────
 [tool.ruff]
 line-length = 120
