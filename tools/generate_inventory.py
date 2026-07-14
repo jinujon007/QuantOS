@@ -32,9 +32,9 @@ SCRIPT_FILES = {"run_today.ps1"}
 NOTEBOOK_SUFFIXES = {".ipynb"}
 CONFIG_SUFFIXES = {".toml", ".ini", ".cfg", ".yaml", ".yml"}
 CONFIG_NAMES = {".env.example", "requirements-lock.txt"}
-DATA_SUFFIXES = {".csv", ".json"}
+DATA_SUFFIXES = {".csv", ".json", ".db"}  # .db: PIT universe store (WP-007)
 DOC_SUFFIXES = {".md", ".html"}
-REPO_META_NAMES = {".gitignore", ".gitattributes", ".editorconfig", "CODEOWNERS"}
+REPO_META_NAMES = {".gitignore", ".gitattributes", ".editorconfig", "CODEOWNERS", "LICENSE"}
 # Phase 0 engineering scaffolding — classified by location, not by
 # enumerating every filename, since new tests/tools files are expected to
 # keep being added and shouldn't require updating this list each time.

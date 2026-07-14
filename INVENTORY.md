@@ -40,7 +40,7 @@ Jupyter notebooks.
 
 _none_
 
-## Data Fixtures (467)
+## Data Fixtures (468)
 
 Cached market data, results, and persisted state — CSV/JSON.
 
@@ -510,6 +510,7 @@ Cached market data, results, and persisted state — CSV/JSON.
 - `data/paper_state.json`
 - `data/results/equity_comparison.csv`
 - `data/results/equity_curve.csv`
+- `data/universe_pit.db`
 - `nifty500_universe.csv`
 
 ## Documentation (58)
@@ -615,7 +616,7 @@ Phase 0 engineering scripts — inventory, golden-file capture, determinism veri
 - `tools/seed_universe_snapshot.py`
 - `tools/verify_determinism.py`
 
-## Repo Metadata (8)
+## Repo Metadata (9)
 
 Git/editor/CI configuration — not application code or data.
 
@@ -627,6 +628,7 @@ Git/editor/CI configuration — not application code or data.
 - `.github/workflows/ci.yml`
 - `.gitignore`
 - `CODEOWNERS`
+- `LICENSE`
 
 ## Module Scaffold (empty) (51)
 
@@ -690,14 +692,13 @@ Python files not classified above — review needed.
 
 _none_
 
-## Other / Unclassified (2)
+## Other / Unclassified (0)
 
 Everything else — review needed.
 
-- `LICENSE`
-- `data/universe_pit.db`
+_none_
 
 ## Summary
 
 - Total tracked files: 628
-- Unclassified (needs review): 2
+- Unclassified (needs review): 0
