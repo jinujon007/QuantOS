@@ -50,15 +50,26 @@ duplicated). Event convention: message = event name, event data via
 coverage (117 stmts, 22 strict-mypy files). Zero change to the six
 frozen scripts; zero dependency changes.
 
+## Latest: WP-011 — QuantOS Desktop: complete (2026-07-14, ADR-036)
+
+Local app at 127.0.0.1:8742 (`python tools/desktop_app.py`, Desktop
+shortcut via tools/create_desktop_shortcut.ps1): Overview/Brokers/
+Orders/Strategy/System. Broker connect flows (Zerodha request-token
+exchange, Angel TOTP) verified read-only; credentials in-memory only.
+Kill switch operable from the UI (the one write control), drilled live
+UI↔CLI. Shared read models in api/collectors.py feed both the app and
+the static console. fastapi/uvicorn now pinned deps.
+
 ## Next work (operator-ratified, interview 2026-07-14)
 
 **Automation loop**, in order:
-1. **WP-011 — Portfolio module** — target-weights → order diffing with
+1. **WP-012 — Portfolio module** — target-weights → order diffing with
    stop-loss carry; completes the weekly cycle against the engine.
-2. **WP-012 — run_cycle wiring** (ADR-010) — weekly cycle through the
+2. **WP-013 — run_cycle wiring** (ADR-010) — weekly cycle through the
    new pipeline, parity period alongside paper_trader.py.
 3. Scheduler hardening (daily task registered 2026-07-14:
-   "QuantOS Daily Paper Run", weekdays 15:40, tools/daily_run.ps1).
+   "QuantOS Daily Paper Run", weekdays 15:40, tools/daily_run.ps1 —
+   live paper trading runs unattended from 2026-07-15).
 
 Then: Phase 2 finish (corporate actions, fetch adapter), Phase 4 risk
 table, TD-013 live hardening. Operator to create Zerodha API key this

@@ -28,6 +28,45 @@ _BASE = "https://api.kite.trade"
 _TIMEOUT = 15.0
 
 
+def kite_login_url(api_key: str) -> str:
+    """The browser URL where the operator logs in daily; Zerodha
+    redirects back with a request_token to exchange below."""
+    return f"https://kite.zerodha.com/connect/login?v=3&api_key={api_key}"
+
+
+def exchange_request_token(
+    api_key: str, api_secret: str, request_token: str, session: requests.Session | None = None
+) -> str:
+    """Kite Connect v3 daily token exchange: request_token -> access_token.
+
+    checksum = sha256(api_key + request_token + api_secret). The secret
+    is used transiently and never stored or logged by this function.
+    Raises BrokerAuthError on any failure -- never a guessed token.
+    """
+    import hashlib
+
+    if not (api_key and api_secret and request_token):
+        raise BrokerAuthError("Token exchange requires api_key, api_secret and request_token")
+    checksum = hashlib.sha256((api_key + request_token + api_secret).encode()).hexdigest()
+    http = session or requests.Session()
+    try:
+        response = http.post(
+            f"{_BASE}/session/token",
+            data={"api_key": api_key, "request_token": request_token, "checksum": checksum},
+            headers={"X-Kite-Version": "3"},
+            timeout=_TIMEOUT,
+        )
+        payload: dict[str, Any] = response.json()
+    except requests.RequestException as exc:
+        raise BrokerConnectionError(f"Kite unreachable during token exchange: {exc}") from exc
+    except ValueError as exc:
+        raise BrokerAuthError("Kite returned non-JSON during token exchange") from exc
+    token = payload.get("data", {}).get("access_token") if payload.get("status") == "success" else None
+    if not token:
+        raise BrokerAuthError(f"Kite token exchange failed: {payload.get('message', 'unknown error')}")
+    return str(token)
+
+
 class ZerodhaKiteAdapter:
     """Composes OrderPlacer + AccountReader against Kite Connect v3."""
 

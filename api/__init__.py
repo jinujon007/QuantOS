@@ -1,9 +1,10 @@
-"""Thin, read-mostly internal REST/RPC layer exposing system state to the
-dashboard and operator tooling. Placement per ADR-031 (Blueprint gap-fill).
+"""QuantOS Desktop's local application layer (WP-011, ADR-036).
 
-Empty by design (QuantOS Constitution, Part IX / ADR-031). Phase 0 repository
-organization only -- no implementation yet. Populated starting Phase 1, per the
-frozen QuantOS Target Architecture Blueprint's module specification, strangler-
-fig migration (ADR-003), never a rewrite of the frozen scripts at the repo
-root.
+Thin, read-mostly REST layer over the system's real artifacts, bound
+to 127.0.0.1 only (Constitution Part III/Security). collectors.py
+holds the shared read models (also consumed by the static console
+generator); server.py serves the desktop UI (app.html) plus the JSON
+API, including the one permitted write control -- the kill switch
+(ADR-028) -- and read-only broker account verification. Broker
+credentials live in process memory only, never on disk.
 """

@@ -23,7 +23,7 @@ from quantos_core.brokers.orders import (
 )
 from quantos_core.brokers.paper import PaperBrokerAdapter
 from quantos_core.brokers.ports import AccountReader, OrderPlacer
-from quantos_core.brokers.zerodha import ZerodhaKiteAdapter
+from quantos_core.brokers.zerodha import ZerodhaKiteAdapter, exchange_request_token, kite_login_url
 
 __all__ = [
     "NSE_TICK",
@@ -39,5 +39,7 @@ __all__ = [
     "OrderSide",
     "PaperBrokerAdapter",
     "ZerodhaKiteAdapter",
+    "exchange_request_token",
+    "kite_login_url",
     "to_tick",
 ]

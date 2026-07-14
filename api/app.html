@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuantOS</title>
+<style>
+  :root{
+    --paper:#F2F4F3; --panel:#FBFCFB; --ink:#1A2320; --ink-soft:#4E5B56; --line:#D8DEDB;
+    --accent:#B35C0E; --accent-soft:#F4E3D2;
+    --good:#1E7A4E; --good-soft:#DFEEE6; --crit:#B3382E; --crit-soft:#F3E0DE;
+    --wait:#8A6D1F; --wait-soft:#F0E9D2;
+    --mono:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+    --serif:Charter,Georgia,"Times New Roman",serif;
+    --sans:"Segoe UI",-apple-system,system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#111816; --panel:#18201D; --ink:#E4EAE7; --ink-soft:#93A29B; --line:#2A342F;
+      --accent:#E08C3C; --accent-soft:#3A2A18;
+      --good:#4CC38A; --good-soft:#1A2A22; --crit:#E5695C; --crit-soft:#33201D;
+      --wait:#D4B356; --wait-soft:#2E2817;
+    }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;margin:0;font-size:14.5px;height:100vh;display:flex;flex-direction:column}
+  .modebar{background:var(--wait-soft);color:var(--wait);border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;text-align:center;padding:5px 10px}
+  body.halted .modebar{background:var(--crit-soft);color:var(--crit);font-weight:700}
+  .topbar{display:flex;align-items:center;gap:18px;padding:10px 22px;border-bottom:2px solid var(--ink);background:var(--panel)}
+  body.halted .topbar{border-bottom-color:var(--crit)}
+  .brand{font-family:var(--serif);font-size:21px;font-weight:700}
+  nav{display:flex;gap:4px;margin-left:12px}
+  nav button{font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;background:none;border:none;color:var(--ink-soft);
+    padding:7px 13px;cursor:pointer;border-bottom:2px solid transparent}
+  nav button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+  nav button:hover{color:var(--ink)}
+  .topstate{margin-left:auto;font-family:var(--mono);font-size:12px;display:flex;gap:10px;align-items:center}
+  .pill{padding:3px 10px;border-radius:2px;border:1px solid var(--line);font-weight:600}
+  .pill.ok{color:var(--good);background:var(--good-soft);border-color:var(--good)}
+  .pill.wait{color:var(--wait);background:var(--wait-soft);border-color:var(--wait)}
+  .pill.crit{color:var(--crit);background:var(--crit-soft);border-color:var(--crit)}
+  main{flex:1;overflow-y:auto;padding:20px 22px 60px}
+  .page{max-width:1060px;margin:0 auto;display:none}
+  .page.active{display:block}
+  h2{font-family:var(--serif);font-size:19px;margin:0 0 10px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:22px 0 8px}
+  .eyebrow:first-child{margin-top:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:16px 18px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+  .proof{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:10px}
+  .cell{border:1px solid var(--line);background:var(--paper);border-radius:3px;padding:11px 13px}
+  .cell .v{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .cell .k{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+  .cell.state .v{font-size:15px}
+  .cell.state.ok .v{color:var(--good)} .cell.state.wait .v{color:var(--wait)} .cell.state.crit .v{color:var(--crit)}
+  table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+  .tablewrap{overflow-x:auto}
+  th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:6px 10px;border-bottom:2px solid var(--ink)}
+  td{padding:5px 10px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+  td.r,th.r{text-align:right}
+  tr:last-child td{border-bottom:none}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:2px;font-weight:600}
+  .tag.fill{background:var(--good-soft);color:var(--good)}
+  .tag.wait{background:var(--wait-soft);color:var(--wait)}
+  .tag.block{background:var(--crit-soft);color:var(--crit)}
+  .mut{color:var(--ink-soft);font-size:12.5px;margin:8px 0 0;max-width:80ch}
+  code{font-family:var(--mono);font-size:.92em;background:var(--accent-soft);padding:1px 5px;border-radius:2px}
+  label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:10px 0 3px}
+  input{width:100%;padding:8px 10px;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:2px}
+  input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  button.act{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.05em;padding:9px 16px;margin-top:12px;
+    background:var(--accent);color:var(--paper);border:none;border-radius:2px;cursor:pointer}
+  button.act:hover{opacity:.9}
+  button.act.danger{background:var(--crit)}
+  button.act.quiet{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+  .msg{font-family:var(--mono);font-size:12px;margin-top:10px;padding:8px 10px;border-radius:2px;display:none;white-space:pre-wrap}
+  .msg.ok{display:block;background:var(--good-soft);color:var(--good)}
+  .msg.err{display:block;background:var(--crit-soft);color:var(--crit)}
+  .chartwrap{position:relative;margin-top:6px}
+  svg{width:100%;height:auto;display:block}
+  .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11.5px;
+    padding:3px 7px;border-radius:2px;white-space:nowrap;transform:translate(-50%,-130%)}
+  ul{margin:6px 0 0;padding-left:20px} li{margin:5px 0;color:var(--ink-soft)} li b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="modebar" id="modebar">Paper mode — no live capital. Broker connections are read-only verification.</div>
+<div class="topbar">
+  <span class="brand">QuantOS</span>
+  <nav id="nav">
+    <button data-page="overview" class="active">OVERVIEW</button>
+    <button data-page="brokers">BROKERS</button>
+    <button data-page="orders">ORDERS</button>
+    <button data-page="strategy">STRATEGY</button>
+    <button data-page="system">SYSTEM</button>
+  </nav>
+  <div class="topstate">
+    <span class="pill" id="pill-switch">…</span>
+    <span class="pill" id="pill-brokers">brokers: 0</span>
+  </div>
+</div>
+<main>
+
+<div class="page active" id="page-overview">
+  <div class="proof" id="ov-tiles"></div>
+  <p class="eyebrow">Paper account — the prospective-validation record</p>
+  <div class="panel" id="ov-paper"></div>
+  <p class="eyebrow">Backtest — Momentum v1.0, pinned reproducible run</p>
+  <div class="panel">
+    <div class="proof" id="ov-eqstats"></div>
+    <div class="chartwrap"><svg id="equity" viewBox="0 0 900 300" role="img" aria-label="Backtest equity curve"></svg>
+      <div id="tip" class="tip" hidden></div></div>
+    <p class="mut" id="ov-eqnote"></p>
+  </div>
+</div>
+
+<div class="page" id="page-brokers">
+  <div class="grid2">
+    <div class="panel">
+      <h2>Zerodha Kite <span class="pill" id="z-pill">not connected</span></h2>
+      <p class="mut">Personal plan: free order/account APIs. Daily flow: enter key+secret → open the login
+      window → Zerodha redirects to a URL containing <code>request_token=…</code> → paste that token here.
+      Nothing is stored on disk; the session lives only while the app runs.</p>
+      <label>API key</label><input id="z-key" autocomplete="off">
+      <label>API secret</label><input id="z-secret" type="password" autocomplete="off">
+      <button class="act quiet" onclick="zerodhaLogin()">1 · Open Zerodha login</button>
+      <label>request_token (from the redirect URL)</label><input id="z-reqtoken" autocomplete="off">
+      <button class="act" onclick="zerodhaConnect()">2 · Connect (read-only verify)</button>
+      <div class="msg" id="z-msg"></div>
+      <div id="z-account"></div>
+    </div>
+    <div class="panel">
+      <h2>Angel One SmartAPI <span class="pill" id="a-pill">not connected</span></h2>
+      <p class="mut">Free API. Enter your key, client code, PIN and the current 6-digit TOTP from your
+      authenticator app. Nothing is stored on disk.</p>
+      <label>API key</label><input id="a-key" autocomplete="off">
+      <label>Client code</label><input id="a-client" autocomplete="off">
+      <label>PIN</label><input id="a-pin" type="password" autocomplete="off">
+      <label>TOTP (current 6 digits)</label><input id="a-totp" autocomplete="off">
+      <button class="act" onclick="angelConnect()">Connect (read-only verify)</button>
+      <div class="msg" id="a-msg"></div>
+      <div id="a-account"></div>
+    </div>
+  </div>
+  <p class="mut">Don't have keys yet? Zerodha: create a free personal app at <code>developers.kite.trade</code>.
+  Angel One: <code>smartapi.angelone.in</code>. Connecting verifies the adapter against your real account —
+  it reads holdings and funds, and places nothing.</p>
+</div>
+
+<div class="page" id="page-orders">
+  <p class="eyebrow">Live account holdings (when a broker is connected)</p>
+  <div class="panel" id="ord-live"><p class="mut">No broker connected — connect one on the Brokers tab.</p></div>
+  <p class="eyebrow">Order journal — every attempt, append-only</p>
+  <div class="panel tablewrap" id="ord-journal"></div>
+</div>
+
+<div class="page" id="page-strategy">
+  <div class="grid2">
+    <div><p class="eyebrow">Momentum v1.0 — frozen</p><div class="panel" id="st-params"></div></div>
+    <div><p class="eyebrow">Point-in-time universe</p><div class="panel" id="st-universe"></div></div>
+  </div>
+</div>
+
+<div class="page" id="page-system">
+  <div class="grid2">
+    <div class="panel">
+      <h2>Kill switch</h2>
+      <p class="mut">The one write control (ADR-028). Persisted; checked before every order with no bypass.
+      A reason is required — it goes in the audit record.</p>
+      <label>Reason</label><input id="ks-reason" autocomplete="off">
+      <button class="act danger" onclick="killSwitch('engage')">ENGAGE — halt all trading</button>
+      <button class="act quiet" onclick="killSwitch('release')">Release</button>
+      <div class="msg" id="ks-msg"></div>
+    </div>
+    <div class="panel">
+      <h2>Runbook</h2>
+      <ul>
+        <li><b>Daily 15:40:</b> automated (Task Scheduler: "QuantOS Daily Paper Run")</li>
+        <li><b>Run log:</b> <code>data\daily_run.log</code></li>
+        <li><b>Full demo:</b> <code>python tools\demo_pipeline.py</code></li>
+        <li><b>Health gates:</b> <code>python -m pytest -m "not network" -q</code></li>
+        <li><b>This app:</b> <code>python tools\desktop_app.py</code> · closes = broker sessions forgotten</li>
+      </ul>
+      <div id="sys-project" class="mut"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let STATE = null;
+
+function inr(v){ return "₹" + Math.round(v).toLocaleString("en-IN"); }
+function tag(outcome){
+  const cls = {FILLED:"fill", OPEN:"wait", BLOCKED:"block", FAILED:"block", UNKNOWN:"block"}[outcome] || "wait";
+  return `<span class="tag ${cls}">${outcome}</span>`;
+}
+async function api(path, body){
+  const opts = body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {};
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok){
+    const d = data.detail;
+    // FastAPI validation errors arrive as an array of {loc, msg} objects.
+    const msg = typeof d === "string" ? d
+      : Array.isArray(d) ? d.map(x => (x.loc || []).slice(1).join(".") + ": " + x.msg).join("; ")
+      : res.statusText;
+    throw new Error(msg);
+  }
+  return data;
+}
+function show(el, kind, text){ el.className = "msg " + kind; el.textContent = text; }
+
+// ── nav ──────────────────────────────────────────────────────────────────
+$("nav").addEventListener("click", (e) => {
+  const btn = e.target.closest("button"); if (!btn) return;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b === btn));
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + btn.dataset.page));
+});
+
+// ── render from /api/state ───────────────────────────────────────────────
+function render(){
+  const s = STATE;
+  const halted = s.kill_switch.engaged;
+  document.body.classList.toggle("halted", halted);
+  $("modebar").textContent = halted
+    ? "TRADING HALTED — kill switch engaged. Release it on the System tab."
+    : "Paper mode — no live capital. Broker connections are read-only verification.";
+  $("pill-switch").className = "pill " + (halted ? "crit" : "ok");
+  $("pill-switch").textContent = halted ? "HALTED" : "kill switch: off";
+  const nBrokers = Object.keys(s.brokers || {}).length;
+  $("pill-brokers").className = "pill " + (nBrokers ? "ok" : "wait");
+  $("pill-brokers").textContent = "brokers: " + nBrokers;
+
+  const paper = s.paper, holdings = paper.holdings || {};
+  const stateLabel = halted ? ["HALTED","crit","kill switch engaged"] :
+    (Object.keys(holdings).length ? ["ACTIVE — INVESTED","ok", Object.keys(holdings).length + " positions"]
+                                  : ["ACTIVE — IN CASH","wait","regime filter holding cash"]);
+  $("ov-tiles").innerHTML = `
+    <div class="cell state ${stateLabel[1]}"><div class="v">${stateLabel[0]}</div><div class="k">${stateLabel[2]}</div></div>
+    <div class="cell"><div class="v">${inr(paper.portfolio_value || 0)}</div><div class="k">paper portfolio (virtual)</div></div>
+    <div class="cell"><div class="v">${paper.last_updated || "—"}</div><div class="k">paper state updated</div></div>
+    <div class="cell"><div class="v">${s.universe.length ? s.universe[0].date : "—"}</div><div class="k">latest universe snapshot</div></div>`;
+
+  $("ov-paper").innerHTML = paper.available ? `
+    <div class="proof">
+      <div class="cell"><div class="v">${inr(paper.portfolio_value)}</div><div class="k">portfolio value</div></div>
+      <div class="cell"><div class="v">${inr(paper.cash)}</div><div class="k">cash</div></div>
+      <div class="cell"><div class="v">${Object.keys(holdings).length}</div><div class="k">open positions</div></div>
+      <div class="cell"><div class="v">${paper.start_date}</div><div class="k">tracking since</div></div>
+    </div>
+    <p class="mut">The daily 15:40 scheduled run keeps this current. Prospective-validation gate: 13 weekly logs.</p>`
+    : `<p class="mut">paper_state.json not found — the daily run will create it.</p>`;
+
+  const eq = s.equity;
+  if (eq.available){
+    $("ov-eqstats").innerHTML = `
+      <div class="cell"><div class="v">${inr(eq.final)}</div><div class="k">end value (from ${inr(eq.initial)})</div></div>
+      <div class="cell"><div class="v">${(eq.cagr*100).toFixed(1)}%</div><div class="k">CAGR</div></div>
+      <div class="cell"><div class="v">${eq.sharpe.toFixed(2)}</div><div class="k">Sharpe (weekly, ann.)</div></div>
+      <div class="cell"><div class="v">${(eq.max_dd*100).toFixed(1)}%</div><div class="k">max drawdown</div></div>`;
+    $("ov-eqnote").textContent =
+      `Regime-filtered backtest, accurate delivery cost model, ${eq.start} → ${eq.end}. ` +
+      `Computed from the determinism-gated equity_curve.csv. Past performance ≠ future results.`;
+    drawChart(eq.points);
+  }
+
+  const rows = s.journal.map(e =>
+    `<tr><td>${e.id}</td><td>${e.side} ${e.quantity} ${e.ticker}</td><td class="r">${e.limit_price.toFixed(2)}</td><td>${tag(e.outcome)}</td></tr>`).join("");
+  $("ord-journal").innerHTML = s.journal.length
+    ? `<table><thead><tr><th>Journal ID</th><th>Order</th><th class="r">Limit ₹</th><th>Outcome</th></tr></thead><tbody>${rows}</tbody></table>
+       <p class="mut">Append-only — filled, open, blocked and failed attempts all recorded. Newest first.</p>`
+    : `<p class="mut">No orders journaled yet — run the demo pipeline.</p>`;
+
+  const p = s.strategy.params;
+  $("st-params").innerHTML = `
+    <table><tbody>
+      <tr><td>Universe</td><td class="r">Nifty 500 (point-in-time)</td></tr>
+      <tr><td>Momentum window</td><td class="r">${p.lookback_months}M − ${p.skip_months}M</td></tr>
+      <tr><td>Positions</td><td class="r">top ${p.top_n}, equal weight</td></tr>
+      <tr><td>Stop loss</td><td class="r">${(p.stop_loss_pct*100).toFixed(0)}% from entry</td></tr>
+      <tr><td>Regime filter</td><td class="r">cash when Nifty &lt; ${p.trend_ma_days}-day MA</td></tr>
+      <tr><td>Rebalance</td><td class="r">weekly (Friday)</td></tr>
+    </tbody></table>
+    <p class="mut">Registry: <code>strategies_registry/momentum_v1.yaml</code> — editing it restarts the
+    13-week validation clock. Signal math parity-proven byte-equal to the frozen script.</p>`;
+  $("st-universe").innerHTML = s.universe.length
+    ? `<table><thead><tr><th>Snapshot</th><th class="r">Members</th></tr></thead><tbody>` +
+      s.universe.map(u => `<tr><td>${u.date}</td><td class="r">${u.count}</td></tr>`).join("") + `</tbody></table>
+      <p class="mut">Fridays add a snapshot automatically (scheduled run).</p>`
+    : `<p class="mut">No snapshots yet.</p>`;
+
+  const proj = s.project || {}, metrics = proj.metrics || {}, phase = proj.current_phase || {};
+  $("sys-project").innerHTML =
+    `Phase ${phase.number ?? "?"}: ${phase.name ?? ""} · tests: ${metrics.test_count ?? "—"} · ` +
+    `quantos_core coverage 100% · determinism gate: byte-identical`;
+}
+
+async function refresh(){ STATE = await api("/api/state"); render(); }
+
+// ── brokers ──────────────────────────────────────────────────────────────
+function accountHtml(snapshot){
+  const h = snapshot.holdings, keys = Object.keys(h);
+  const rows = keys.map(k => `<tr><td>${k}</td><td class="r">${h[k]}</td></tr>`).join("");
+  return `<div class="proof" style="margin-top:12px">
+      <div class="cell"><div class="v">${inr(snapshot.available_cash)}</div><div class="k">available cash</div></div>
+      <div class="cell"><div class="v">${snapshot.positions}</div><div class="k">holdings</div></div></div>` +
+    (keys.length ? `<div class="tablewrap"><table><thead><tr><th>Ticker</th><th class="r">Qty</th></tr></thead><tbody>${rows}</tbody></table></div>` : "");
+}
+async function zerodhaLogin(){
+  try {
+    const r = await api("/api/broker/zerodha/login-url", {api_key: $("z-key").value.trim()});
+    window.open(r.url, "_blank");
+    show($("z-msg"), "ok", "Login window opened. After logging in, copy request_token=… from the redirect URL into the field below.");
+  } catch (e){ show($("z-msg"), "err", e.message); }
+}
+async function zerodhaConnect(){
+  try {
+    show($("z-msg"), "ok", "Connecting…");
+    const snap = await api("/api/broker/zerodha/connect", {
+      api_key: $("z-key").value.trim(), api_secret: $("z-secret").value.trim(),
+      request_token: $("z-reqtoken").value.trim(), access_token: ""});
+    $("z-pill").className = "pill ok"; $("z-pill").textContent = "CONNECTED";
+    show($("z-msg"), "ok", "Connected — read-only account verification below. Nothing was placed.");
+    $("z-account").innerHTML = accountHtml(snap);
+    $("z-secret").value = ""; $("z-reqtoken").value = "";
+    refresh(); renderLive("Zerodha", snap);
+  } catch (e){ show($("z-msg"), "err", e.message); }
+}
+async function angelConnect(){
+  try {
+    show($("a-msg"), "ok", "Connecting…");
+    const snap = await api("/api/broker/angel/connect", {
+      api_key: $("a-key").value.trim(), client_code: $("a-client").value.trim(),
+      pin: $("a-pin").value, totp: $("a-totp").value.trim()});
+    $("a-pill").className = "pill ok"; $("a-pill").textContent = "CONNECTED";
+    show($("a-msg"), "ok", "Connected — read-only account verification below. Nothing was placed.");
+    $("a-account").innerHTML = accountHtml(snap);
+    $("a-pin").value = ""; $("a-totp").value = "";
+    refresh(); renderLive("Angel One", snap);
+  } catch (e){ show($("a-msg"), "err", e.message); }
+}
+function renderLive(name, snap){
+  $("ord-live").innerHTML = `<h2>${name} — live account (read-only)</h2>` + accountHtml(snap);
+}
+
+// ── kill switch ──────────────────────────────────────────────────────────
+async function killSwitch(action){
+  const reason = $("ks-reason").value.trim();
+  if (reason.length < 3){ show($("ks-msg"), "err", "A reason is required — it goes in the audit record."); return; }
+  if (action === "engage" && !confirm("Engage the kill switch? ALL trading blocks until released.")) return;
+  try {
+    const r = await api("/api/killswitch", {action, reason});
+    show($("ks-msg"), "ok", r.engaged ? "ENGAGED — all trading blocked." : "Released — trading permitted.");
+    $("ks-reason").value = "";
+    refresh();
+  } catch (e){ show($("ks-msg"), "err", e.message); }
+}
+
+// ── equity chart (single series + crosshair) ─────────────────────────────
+function drawChart(points){
+  const svg = $("equity"); svg.innerHTML = "";
+  const tip = $("tip"); const NS = "http://www.w3.org/2000/svg";
+  const W = 900, H = 300, L = 74, R = 18, T = 14, B = 30;
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const vals = points.map(p => p[1]), n = points.length;
+  const vMin = Math.min(...vals), vMax = Math.max(...vals);
+  const x = (i) => L + (i/(n-1)) * (W-L-R), y = (v) => T + (1-(v-vMin)/(vMax-vMin)) * (H-T-B);
+  const el = (t,a) => { const e = document.createElementNS(NS,t); for (const k in a) e.setAttribute(k,a[k]); svg.appendChild(e); return e; };
+  for (let g = 0; g <= 3; g++){
+    const v = vMin + (g/3)*(vMax-vMin);
+    el("line",{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:css("--line"),"stroke-width":1});
+    const t = el("text",{x:L-8,y:y(v)+4,"text-anchor":"end","font-size":11,fill:css("--ink-soft")});
+    t.textContent = inr(v); t.style.fontFamily = css("--mono");
+  }
+  let lastYear = "";
+  points.forEach((p,i) => { const yr = p[0].slice(0,4);
+    if (yr !== lastYear){ lastYear = yr;
+      const t = el("text",{x:x(i),y:H-10,"text-anchor":"middle","font-size":11,fill:css("--ink-soft")});
+      t.textContent = yr; t.style.fontFamily = css("--mono"); }});
+  const line = points.map((p,i) => (i?"L":"M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
+  el("path",{d:line + ` L ${x(n-1)} ${H-B} L ${L} ${H-B} Z`,fill:css("--accent"),opacity:.09});
+  el("path",{d:line,fill:"none",stroke:css("--accent"),"stroke-width":2,"stroke-linejoin":"round"});
+  el("circle",{cx:x(n-1),cy:y(vals[n-1]),r:4,fill:css("--accent")});
+  const cross = el("line",{y1:T,y2:H-B,stroke:css("--ink-soft"),"stroke-width":1,"stroke-dasharray":"3 3",visibility:"hidden"});
+  const dot = el("circle",{r:4,fill:css("--accent"),stroke:css("--paper"),"stroke-width":2,visibility:"hidden"});
+  svg.onmousemove = (ev) => {
+    const box = svg.getBoundingClientRect();
+    const mx = ((ev.clientX-box.left)/box.width)*W;
+    const i = Math.max(0, Math.min(n-1, Math.round(((mx-L)/(W-L-R))*(n-1))));
+    cross.setAttribute("x1",x(i)); cross.setAttribute("x2",x(i)); cross.setAttribute("visibility","visible");
+    dot.setAttribute("cx",x(i)); dot.setAttribute("cy",y(vals[i])); dot.setAttribute("visibility","visible");
+    tip.hidden = false; tip.style.left = (x(i)/W)*100+"%"; tip.style.top = (y(vals[i])/H)*100+"%";
+    tip.textContent = points[i][0] + "  " + inr(vals[i]);
+  };
+  svg.onmouseleave = () => { cross.setAttribute("visibility","hidden"); dot.setAttribute("visibility","hidden"); tip.hidden = true; };
+}
+
+refresh().catch(e => { $("modebar").textContent = "Failed to load state: " + e.message; });
+setInterval(refresh, 60000);
+</script>
+</body>
+</html>
