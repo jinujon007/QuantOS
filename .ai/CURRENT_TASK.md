@@ -1,33 +1,30 @@
 # Current Task
 
-**WP-003 — Storage Foundation: complete** (2026-07-14). Phase 1 —
-quantos-core skeleton — remains the active phase. Remaining Phase 1
-scope: `utils` (structured logging), being filed as WP-004.
+**WP-004 — Structured Logging: complete** (2026-07-14). With it,
+**Phase 1's stated scope (config, storage, utils) is complete.** No
+work package is currently open.
 
-## What WP-003 delivered
+## What WP-004 delivered
 
-`quantos_core.storage` — the `Repository[T]` port exactly as frozen in
-the Constitution (`get(id) -> T · save(entity) · query(filter) ->
-list[T]`), the `Entity` base model (frozen, strict, self-identifying),
-typed `StorageError`/`EntityNotFoundError`, and `SqliteRepository[T]`
-(stdlib sqlite3, one table per aggregate, connection-per-operation,
-commit-or-rollback transactions, documents re-validated on every read,
-unknown filter fields rejected loudly, deterministic id-ordered query
-results, aggregate-name injection guard). 22 tests, 100% module
-coverage. No consumer wired up; zero change to the six frozen scripts;
-zero dependency changes.
+`quantos_core.utils` — `JsonLineFormatter` (one JSON object per line,
+sorted keys, `default=str` fallback, exception capture) and
+`get_logger(module, run_id, stream, level)` (run-id stamped on every
+record via filter, `propagate=False`, handlers reconfigured never
+duplicated). Event convention: message = event name, event data via
+`extra={"data": {...}}`. 9 tests; quantos_core remains at 100%
+coverage (117 stmts, 22 strict-mypy files). Zero change to the six
+frozen scripts; zero dependency changes.
 
-TD-012 recurred as predicted (inventory classifier mislabels the new
-real files as scaffold) — tracked, not fixed, out of scope.
+## Next decision (not yet a task in progress)
 
-## Remaining scope of Phase 1
-
-`utils` (structured JSON logging per Constitution Part III/Logging) —
-WP-004, in progress. After that, Phase 1's stated scope is exhausted;
-WP-005 (import boundary enforcement, Medium priority since real module
-code exists) and WP-006 (layered configuration) remain reserved.
+1. **WP-005 — Architectural Import Boundary Enforcement** — highest
+   priority: TD-010 is Medium and rising; config, storage, and utils
+   now all carry real code with no mechanical boundary enforcement.
+2. **WP-006 — Layered Configuration** (reserved).
+3. **Phase 2 — Data Platform** (`DataProvider` port, point-in-time
+   universe store; closes audit findings F1/F9) — the first phase on
+   the critical path toward live broker integration (Phase 8).
 
 ## Out of scope for this document
 
-Phase 2 (Data Platform) and beyond. See `AI_CONTEXT.md` for the frozen
-roadmap.
+Phase 2+ specifications. See `AI_CONTEXT.md` for the frozen roadmap.

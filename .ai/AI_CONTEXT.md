@@ -118,6 +118,9 @@ Phase 0 complete. WP-000 (pre-Phase-1 repository reorganization) complete,
 deterministic query ordering). No consumer wiring; no domain aggregates
 yet (Phase 4/6). Architectural import-boundary enforcement (Constitution
 Part II item 4, ADR-029) remains unmet, reserved as **WP-005**, Medium
-priority (TD-010). `utils` is the last empty Phase 1 stub — WP-004
-(structured logging) in progress. See `CURRENT_TASK.md` for exact scope
-and `PROJECT_STATE.yaml` for current metrics.
+priority (TD-010). WP-004 (Structured Logging) complete, 2026-07-14:
+`quantos_core.utils` — JSON-lines logging (timestamp/level/module/
+event/run-id, sorted keys, exception capture), stdlib-only. **Phase 1's
+stated scope (config, storage, utils) is complete.** Next: WP-005,
+WP-006, or Phase 2 (Data Platform). See `CURRENT_TASK.md` for exact
+scope and `PROJECT_STATE.yaml` for current metrics.
