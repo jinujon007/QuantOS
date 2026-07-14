@@ -1,10 +1,17 @@
 # Current Task
 
-**WP-005 — Import Boundary Enforcement: complete** (2026-07-14).
-TD-010 closed: the ADR-032 import matrix is now mechanically enforced
-in the CI-blocking suite (`tests/quantos_core/test_import_boundaries.py`,
-stdlib-ast, no new dependency). With WP-002/003/004 also done,
-**Phase 1 is fully closed.** No work package is currently open.
+**WP-007 — Data Platform Foundation: complete** (2026-07-14). Phase 2
+is now open. Same day: WP-003 (storage), WP-004 (logging), WP-005
+(import boundaries — TD-010 closed) all completed; **Phase 1 fully
+closed.** No work package is currently open.
+
+WP-007 delivered (ADR-033): segregated `UniverseProvider`/
+`PriceProvider` ports, `DataFetchError`, `SqliteUniverseStore` (PIT
+membership snapshots — F1/F9 structural fix going forward; first real
+snapshot 2026-07-14, 504 tickers, committed as `data/universe_pit.db`),
+`CsvCachePriceProvider` (fail-closed reader over the audited cache),
+`tools/seed_universe_snapshot.py`. **Operational: seed a fresh
+snapshot every Friday** alongside the paper-trader run.
 
 ## What WP-004 delivered
 
@@ -19,10 +26,9 @@ frozen scripts; zero dependency changes.
 
 ## Next decision (not yet a task in progress)
 
-1. **Phase 2 — Data Platform** (`DataProvider` port, point-in-time
-   universe store; closes audit findings F1/F9) — next roadmap item,
-   first on the critical path toward live broker integration (Phase 8).
-2. **WP-006 — Layered Configuration** (reserved; can ride alongside
+1. **Phase 2 continuation** — corporate-actions adjustment, data
+   quality validators, network fetch adapter behind `PriceProvider`.
+2. **WP-006 — Layered Configuration** (reserved; ride alongside
    Phase 2 when a real consumer needs it).
 
 India execution-landscape research (OpenAlgo vs native SmartAPI

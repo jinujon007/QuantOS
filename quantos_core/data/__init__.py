@@ -1,9 +1,26 @@
-"""The data platform: ingestion, point-in-time storage, corporate actions, quality
-validation, caching.
+"""The data platform: ingestion, point-in-time storage, corporate
+actions, quality validation, caching.
 
-Empty by design (QuantOS Constitution, Part IX / ADR-031). Phase 0 repository
-organization only -- no implementation yet. Populated starting Phase 1, per the
-frozen QuantOS Target Architecture Blueprint's module specification, strangler-
-fig migration (ADR-003), never a rewrite of the frozen scripts at the repo
-root.
+WP-007 implements the Phase 2 opening slice (ADR-033): segregated
+DataProvider ports (`UniverseProvider`, `PriceProvider`), the typed
+`DataFetchError`, the point-in-time `SqliteUniverseStore` (structural
+fix for F1/F9 going forward), and the fail-closed
+`CsvCachePriceProvider` over the existing audited cache layout.
+Corporate actions, quality validators, and network fetch adapters are
+later Phase 2 work packages. The six frozen scripts are untouched
+(ADR-003).
 """
+
+from quantos_core.data.errors import DataFetchError
+from quantos_core.data.prices import CsvCachePriceProvider
+from quantos_core.data.provider import PriceProvider, Ticker, UniverseProvider
+from quantos_core.data.universe_store import SqliteUniverseStore
+
+__all__ = [
+    "CsvCachePriceProvider",
+    "DataFetchError",
+    "PriceProvider",
+    "SqliteUniverseStore",
+    "Ticker",
+    "UniverseProvider",
+]

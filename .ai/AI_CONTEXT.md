@@ -121,7 +121,14 @@ Part II item 4, ADR-029) is now met: WP-005 (Import Boundary
 Enforcement) complete, 2026-07-14 — ADR-032 matrix enforced by a
 stdlib-ast scanner in the CI-blocking suite; TD-010 closed. WP-004
 (Structured Logging) complete, 2026-07-14: `quantos_core.utils` —
-JSON-lines logging (timestamp/level/module/event/run-id, sorted keys,
-exception capture), stdlib-only. **Phase 1 is fully closed.** Next:
-Phase 2 (Data Platform) or WP-006. See `CURRENT_TASK.md` for exact
-scope and `PROJECT_STATE.yaml` for current metrics.
+JSON-lines logging, stdlib-only. **Phase 1 is fully closed.**
+**Phase 2 (Data Platform) opened same day** — WP-007 complete,
+2026-07-14 (ADR-033): segregated `UniverseProvider`/`PriceProvider`
+ports, typed `DataFetchError`, `SqliteUniverseStore` point-in-time
+membership store (F1/F9 structural fix going forward; first real
+snapshot 2026-07-14, `data/universe_pit.db`, seed weekly via
+`tools/seed_universe_snapshot.py`), and the fail-closed
+`CsvCachePriceProvider`. Next: Phase 2 continuation (corporate
+actions, quality validators, fetch adapter) or WP-006. See
+`CURRENT_TASK.md` for exact scope and `PROJECT_STATE.yaml` for
+current metrics.

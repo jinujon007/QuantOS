@@ -12,12 +12,12 @@ constitution_status: frozen
 roadmap_status: frozen  # Phases 0-9, per Blueprint
 
 current_phase:
-  number: 1
-  name: quantos-core skeleton
-  scope: extract config, storage, utils(logging) into quantos_core; zero change to the six frozen scripts' behavior
-  code_status: complete  # Phase 1 stated scope done: config (WP-002), storage (WP-003), utils (WP-004)
-  foundation_status: complete  # WP-001: strict mypy + import smoke test now gate quantos_core in CI
-  work_package_filed: false    # WP-005 complete; next: WP-006 or Phase 2 (Data Platform)
+  number: 2
+  name: Data Platform
+  scope: DataProvider port, point-in-time universe store, corporate actions, quality validation (closes F1/F9)
+  code_status: in_progress  # WP-007 opened Phase 2: ports + PIT universe store + fail-closed price provider
+  phase_1_status: fully_closed  # WP-001..005 complete (WP-006 reserved, deferred)
+  work_package_filed: false     # next: corporate actions / quality validators / fetch adapter, or WP-006
 
 modules:
   config:
@@ -29,12 +29,15 @@ modules:
     adapters: [sqlite]
   utils:
     status: partial  # WP-004: structured JSON-lines logging; Clock/calendar helpers arrive with later phases
+  data:
+    status: partial  # WP-007: UniverseProvider/PriceProvider ports, SqliteUniverseStore (PIT), CsvCachePriceProvider
+    pit_universe_snapshots_since: "2026-07-14"
 
 last_completed_work_package:
-  id: WP-005
-  name: Import Boundary Enforcement
+  id: WP-007
+  name: Data Platform Foundation
   date: "2026-07-14"
-  phase: 1
+  phase: 2
 
 ci_gates:
   legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
@@ -60,7 +63,7 @@ governing_documents:
 metrics:
   digital_readiness_score: "53/100"  # Independent Audit, 2026-07-13, institutional bar
   test_coverage_pct: 27              # quantos_core real code at 100% (117 stmts); repo total incl. legacy scripts
-  test_count: 73
+  test_count: 94
 
 open_items:
   risks_total: 5
