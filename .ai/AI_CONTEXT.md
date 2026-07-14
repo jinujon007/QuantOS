@@ -109,13 +109,15 @@ Phase 0 complete. WP-000 (pre-Phase-1 repository reorganization) complete,
 2026-07-13. WP-001 (Repository Foundation — `mypy --strict` on
 `quantos_core`, CI-blocking; import-smoke-test scaffold) complete,
 2026-07-13. WP-002 (Configuration System) complete, 2026-07-13:
-`quantos_core.config` now has real code — a typed, immutable,
-strictly-validated `AppConfig` (one field, `environment`), constructed
-directly from `QUANTOS_ENV`/an explicit argument. No file I/O, no
-layering, no persistence format yet — deliberately deferred and reserved
-as **WP-006**. Architectural import-boundary enforcement (Constitution
-Part II item 4, ADR-029) also remains unmet, reserved as **WP-005**; its
-priority rose from Low to Medium the moment WP-002 landed real,
-unenforced module code (TD-010). `storage` and `utils` are still empty
-stubs. See `CURRENT_TASK.md` for exact scope and `PROJECT_STATE.yaml` for
-current metrics.
+`quantos_core.config` — typed, immutable, strictly-validated `AppConfig`
+(one field, `environment`); layering/persistence deferred, reserved as
+**WP-006**. WP-003 (Storage Foundation) complete, 2026-07-14:
+`quantos_core.storage` — the Constitution's frozen `Repository[T]` port,
+`Entity` base model, typed `StorageError`/`EntityNotFoundError`, and
+`SqliteRepository[T]` (stdlib sqlite3, transactional, fail-closed reads,
+deterministic query ordering). No consumer wiring; no domain aggregates
+yet (Phase 4/6). Architectural import-boundary enforcement (Constitution
+Part II item 4, ADR-029) remains unmet, reserved as **WP-005**, Medium
+priority (TD-010). `utils` is the last empty Phase 1 stub — WP-004
+(structured logging) in progress. See `CURRENT_TASK.md` for exact scope
+and `PROJECT_STATE.yaml` for current metrics.

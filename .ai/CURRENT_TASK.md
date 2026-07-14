@@ -1,39 +1,33 @@
 # Current Task
 
-**WP-002 — Configuration System: complete** (2026-07-13). Phase 1 —
-quantos-core skeleton — remains the active phase. No work package has
-been filed for its remaining scope yet.
+**WP-003 — Storage Foundation: complete** (2026-07-14). Phase 1 —
+quantos-core skeleton — remains the active phase. Remaining Phase 1
+scope: `utils` (structured logging), being filed as WP-004.
 
-## What WP-002 delivered
+## What WP-003 delivered
 
-`quantos_core.config` — `AppConfig` (typed, immutable, `extra="forbid"`,
-one field: `environment: Literal["dev","paper","live"]`), `ConfigError`,
-`load_config(env=None)` resolving from an explicit argument or
-`QUANTOS_ENV`. Fail-closed on missing/invalid environment. No file I/O,
-no layering, no persistence format — deliberately deferred and reserved
-as **WP-006 — Layered Configuration** (name only, not specified). No
-consumer wired up yet; zero change to the six frozen scripts.
+`quantos_core.storage` — the `Repository[T]` port exactly as frozen in
+the Constitution (`get(id) -> T · save(entity) · query(filter) ->
+list[T]`), the `Entity` base model (frozen, strict, self-identifying),
+typed `StorageError`/`EntityNotFoundError`, and `SqliteRepository[T]`
+(stdlib sqlite3, one table per aggregate, connection-per-operation,
+commit-or-rollback transactions, documents re-validated on every read,
+unknown filter fields rejected loudly, deterministic id-ordered query
+results, aggregate-name injection guard). 22 tests, 100% module
+coverage. No consumer wired up; zero change to the six frozen scripts;
+zero dependency changes.
 
-Two pre-existing, unrelated issues were discovered and tracked (not
-silently fixed): **TD-011** — `pip install -e ".[dev]"` (the documented
-lockfile-regeneration method) is broken by WP-000's flat multi-package
-layout; worked around for this WP, needs its own fix. **TD-012** —
-`tools/generate_inventory.py`'s scaffold classifier now mislabels real
-`quantos_core/config/*.py` files as empty stubs.
+TD-012 recurred as predicted (inventory classifier mislabels the new
+real files as scaffold) — tracked, not fixed, out of scope.
 
 ## Remaining scope of Phase 1
 
-`storage` and `utils` (logging) still need extracting into `quantos_core`,
-zero change to the six frozen scripts' behavior. Config's own layering
-(base + environment-overlay + persistence format) is reserved as WP-006,
-not yet scoped in detail.
-
-## Not yet started
-
-No work package has been opened for `storage`, `utils`, or WP-006/WP-005.
-That is the next decision, not a task in progress.
+`utils` (structured JSON logging per Constitution Part III/Logging) —
+WP-004, in progress. After that, Phase 1's stated scope is exhausted;
+WP-005 (import boundary enforcement, Medium priority since real module
+code exists) and WP-006 (layered configuration) remain reserved.
 
 ## Out of scope for this document
 
-Phase 2 (Data Platform) and beyond, and WP-005/WP-006's own specifications,
-are not described here. See `AI_CONTEXT.md` for the full frozen roadmap.
+Phase 2 (Data Platform) and beyond. See `AI_CONTEXT.md` for the frozen
+roadmap.
