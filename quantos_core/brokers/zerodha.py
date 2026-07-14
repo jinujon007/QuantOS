@@ -52,6 +52,12 @@ class ZerodhaKiteAdapter:
         message = payload.get("message", "unknown Kite error")
         if error_type == "TokenException" or response.status_code in (401, 403):
             raise BrokerAuthError(f"Kite auth failure on {context}: {message}")
+        if response.status_code >= 500 or error_type in ("NetworkException", "GeneralException", "DataException"):
+            # Kite's own backend/OMS errors: the request may or may not
+            # have been processed. That is UNKNOWN state, never a
+            # rejection -- treating it as rejected licenses a re-place,
+            # which is the duplicate-order bug.
+            raise BrokerConnectionError(f"Kite backend error on {context} -- state UNKNOWN, reconcile: {message}")
         raise OrderRejectedError(f"Kite rejected {context}: {message}")
 
     def place_order(self, order: LimitOrder) -> OrderReceipt:
@@ -72,9 +78,14 @@ class ZerodhaKiteAdapter:
                 f"Kite unreachable placing {order.ticker} order -- state UNKNOWN: {exc}"
             ) from exc
         data = self._parse(response, f"place_order({order.ticker})")["data"]
+        order_id = data.get("order_id") if isinstance(data, dict) else None
+        if not order_id:
+            raise BrokerConnectionError(
+                f"Kite accepted place_order({order.ticker}) but returned no order_id -- state UNKNOWN, reconcile"
+            )
         # Kite accepts asynchronously; fills are confirmed later via the
         # order book. OPEN is the only honest status at placement time.
-        return OrderReceipt(broker_order_id=str(data["order_id"]), status="OPEN", filled_quantity=0, average_price=None)
+        return OrderReceipt(broker_order_id=str(order_id), status="OPEN", filled_quantity=0, average_price=None)
 
     def _get(self, path: str, context: str) -> dict[str, Any]:
         try:

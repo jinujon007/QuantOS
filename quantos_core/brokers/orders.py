@@ -9,7 +9,25 @@ rather than merely discouraged.
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+
+NSE_TICK = 0.05
+
+
+def to_tick(price: float, tick: float = NSE_TICK) -> float:
+    """Round a price DOWN to the exchange tick grid.
+
+    NSE rejects limit prices off the tick grid; rounding down is the
+    conservative direction for buys (never pay above intent) and for
+    the seller it only concedes one tick. Raises on non-positive input
+    rather than returning a zero price.
+    """
+    if price <= 0:
+        raise ValueError(f"Cannot tick-round non-positive price {price}")
+    ticks = int(round(price / tick, 6))  # 6dp guard against float dust before flooring
+    if ticks * tick > price + 1e-9:
+        ticks -= 1
+    return round(max(ticks, 1) * tick, 2)
 
 
 class BrokerError(Exception):
@@ -42,10 +60,10 @@ class LimitOrder(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    ticker: str  # NSE trading symbol, no suffix (e.g. "RELIANCE")
+    ticker: str = Field(min_length=1)  # NSE trading symbol, no suffix (e.g. "RELIANCE")
     side: OrderSide
     quantity: PositiveInt
-    limit_price: float
+    limit_price: float = Field(gt=0)
     product: Literal["CNC"] = "CNC"
 
 

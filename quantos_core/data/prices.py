@@ -53,4 +53,10 @@ class CsvCachePriceProvider:
             raise DataFetchError(
                 f"No cached prices in window {start.isoformat()}..{end.isoformat()} for requested tickers"
             )
+        # Index union can leave one ticker fully absent from the window
+        # while others fill it -- an all-NaN column is a per-ticker
+        # failure, never a silently narrower answer.
+        for name in frame.columns:
+            if bool(frame[name].isna().all()):
+                raise DataFetchError(f"No cached prices for {name} in window {start.isoformat()}..{end.isoformat()}")
         return frame

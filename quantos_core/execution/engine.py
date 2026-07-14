@@ -29,6 +29,7 @@ class OrderJournalEntry(Entity):
     """Immutable record of one order attempt -- written for every
     outcome (filled, open, rejected, blocked), never only successes."""
 
+    run_id: str
     ticker: str
     side: str
     quantity: int
@@ -51,12 +52,17 @@ class ExecutionEngine:
         self._journal = journal
         self._run_id = run_id
         self._logger = get_logger("execution", run_id=run_id)
-        self._sequence = 0
+        # Resume numbering from what this run_id already journaled --
+        # a re-run with the same run_id must append, never overwrite
+        # (save() is an upsert; colliding ids would silently eat the
+        # audit trail).
+        self._sequence = len(self._journal.query({"run_id": run_id}))
 
     def _record(self, order: LimitOrder, outcome: str, broker_order_id: str | None, detail: str) -> None:
         self._sequence += 1
         entry = OrderJournalEntry(
             id=f"{self._run_id}-{self._sequence:04d}",
+            run_id=self._run_id,
             ticker=order.ticker,
             side=order.side.value,
             quantity=order.quantity,
@@ -92,6 +98,13 @@ class ExecutionEngine:
             receipt = self._broker.place_order(order)
         except BrokerError as exc:
             self._record(order, "FAILED", None, str(exc))
+            raise
+        except Exception as exc:
+            # A non-broker exception mid-placement (adapter bug, parse
+            # crash) leaves the order state UNKNOWN. It must still hit
+            # the journal -- "every path journals" has no exceptions --
+            # then propagate for reconciliation.
+            self._record(order, "UNKNOWN", None, f"non-broker failure mid-placement: {exc}")
             raise
         self._record(order, receipt.status, receipt.broker_order_id, f"filled={receipt.filled_quantity}")
         return receipt

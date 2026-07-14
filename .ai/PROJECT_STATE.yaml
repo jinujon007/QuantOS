@@ -43,7 +43,7 @@ modules:
 demo:
   entrypoint: tools/demo_pipeline.py
   broker_probe: tools/broker_connect_check.py
-  last_run: "2026-07-14"  # end-to-end pass: 7 paper fills, kill-switch drill blocked, 8 journal rows
+  last_run: "2026-07-14"  # re-ran clean post-review: tick-aligned limits, unique run_id, journal appends, JSON events to file
 
 last_completed_work_package:
   id: WP-008
@@ -75,13 +75,13 @@ governing_documents:
 metrics:
   digital_readiness_score: "53/100"  # Independent Audit, 2026-07-13, institutional bar
   test_coverage_pct: 27              # quantos_core real code at 100% (117 stmts); repo total incl. legacy scripts
-  test_count: 131
+  test_count: 142
 
 open_items:
   risks_total: 5
   risks_mitigated: 1
-  tech_debt_total: 12
-  tech_debt_resolved: 2  # TD-009 (ADR-031), TD-010 (WP-005)
+  tech_debt_total: 13
+  tech_debt_resolved: 2  # TD-009 (ADR-031), TD-010 (WP-005); TD-013 added (pre-live hardening backlog, 2026-07-14 review)
 
 repository:
   default_branch: main

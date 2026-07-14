@@ -76,9 +76,14 @@ class AngelOneSmartApiAdapter:
             ) from exc
         if payload.get("status") is True:
             return payload
-        message = f"{payload.get('errorcode', '')} {payload.get('message', 'unknown SmartAPI error')}".strip()
-        if response.status_code in (401, 403) or str(payload.get("errorcode", "")).startswith("AG8"):
+        errorcode = str(payload.get("errorcode", ""))
+        message = f"{errorcode} {payload.get('message', 'unknown SmartAPI error')}".strip()
+        if response.status_code in (401, 403) or errorcode.startswith("AG8"):
             raise BrokerAuthError(f"SmartAPI auth failure on {context}: {message}")
+        if response.status_code >= 500 or errorcode == "AB1004":
+            # AB1004 = SmartAPI's generic transient "try after sometime":
+            # the request may have been processed. UNKNOWN, not rejected.
+            raise BrokerConnectionError(f"SmartAPI backend error on {context} -- state UNKNOWN, reconcile: {message}")
         raise OrderRejectedError(f"SmartAPI rejected {context}: {message}")
 
     def _post(self, path: str, body: dict[str, Any], context: str, authorized: bool = True) -> dict[str, Any]:
@@ -98,7 +103,10 @@ class AngelOneSmartApiAdapter:
             "login",
             authorized=False,
         )
-        token = payload.get("data", {}).get("jwtToken")
+        # SmartAPI can return "status": true with "data": null -- the
+        # `or {}` coercion keeps every present-but-null body from
+        # crashing; each site then fail-closes on the missing value.
+        token = (payload.get("data") or {}).get("jwtToken")
         if not token:
             raise BrokerAuthError("SmartAPI login succeeded but returned no jwtToken -- refusing ambiguous session")
         self._jwt = str(token)
@@ -120,7 +128,7 @@ class AngelOneSmartApiAdapter:
             "quantity": str(order.quantity),
         }
         payload = self._post("/rest/secure/angelbroking/order/v1/placeOrder", body, f"place_order({order.ticker})")
-        order_id = payload.get("data", {}).get("orderid")
+        order_id = (payload.get("data") or {}).get("orderid")
         if not order_id:
             raise BrokerConnectionError(f"SmartAPI accepted {order.ticker} order but returned no orderid -- UNKNOWN")
         return OrderReceipt(broker_order_id=str(order_id), status="OPEN", filled_quantity=0, average_price=None)
@@ -134,9 +142,16 @@ class AngelOneSmartApiAdapter:
 
     def holdings(self) -> dict[str, int]:
         payload = self._get("/rest/secure/angelbroking/portfolio/v1/getAllHolding", "holdings")
-        rows = payload.get("data", {}).get("holdings", []) or []
+        # data: null is SmartAPI's shape for an empty portfolio -- a
+        # legitimate empty, unlike the money-value sites below.
+        rows = (payload.get("data") or {}).get("holdings") or []
         return {str(row["tradingsymbol"]).removesuffix("-EQ"): int(row["quantity"]) for row in rows}
 
     def available_cash(self) -> float:
         payload = self._get("/rest/secure/angelbroking/user/v1/getRMS", "funds")
-        return float(payload.get("data", {}).get("availablecash", 0.0) or 0.0)
+        cash = (payload.get("data") or {}).get("availablecash")
+        if cash is None:
+            # Ambiguity is never a number -- a missing field must not
+            # silently read as zero (or anything else).
+            raise BrokerConnectionError("SmartAPI RMS response missing 'availablecash' -- refusing to guess funds")
+        return float(cash)

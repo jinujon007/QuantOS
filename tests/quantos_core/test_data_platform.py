@@ -153,6 +153,16 @@ def test_empty_window_fails_loudly(cache_dir: Path) -> None:
         CsvCachePriceProvider(cache_dir).get_prices([Ticker("AAA.NS")], date(2025, 1, 1), date(2025, 1, 2))
 
 
+def test_ticker_absent_from_window_fails_per_ticker_not_silently(cache_dir: Path) -> None:
+    # AAA has 2019-01-01..03; LATE lists only from 2019-06-01. Asking for
+    # January must fail on LATE, not return an all-NaN column beside AAA.
+    (cache_dir / "LATE_NS.csv").write_text("Date,Close\n2019-06-01,10.0\n", encoding="utf-8")
+    with pytest.raises(DataFetchError, match="LATE.NS"):
+        CsvCachePriceProvider(cache_dir).get_prices(
+            [Ticker("AAA.NS"), Ticker("LATE.NS")], date(2019, 1, 1), date(2019, 1, 3)
+        )
+
+
 def test_invalid_window_rejected(cache_dir: Path) -> None:
     with pytest.raises(DataFetchError, match="Invalid window"):
         CsvCachePriceProvider(cache_dir).get_prices([Ticker("AAA.NS")], date(2019, 1, 3), date(2019, 1, 1))
