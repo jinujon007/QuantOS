@@ -128,7 +128,15 @@ ports, typed `DataFetchError`, `SqliteUniverseStore` point-in-time
 membership store (F1/F9 structural fix going forward; first real
 snapshot 2026-07-14, `data/universe_pit.db`, seed weekly via
 `tools/seed_universe_snapshot.py`), and the fail-closed
-`CsvCachePriceProvider`. Next: Phase 2 continuation (corporate
-actions, quality validators, fetch adapter) or WP-006. See
-`CURRENT_TASK.md` for exact scope and `PROJECT_STATE.yaml` for
-current metrics.
+`CsvCachePriceProvider`. WP-008 (Execution Vertical Slice, ADR-034)
+complete, 2026-07-14, by operator direction (demo ASAP; both brokers
+connectable): brokers ports + Paper/Zerodha/Angel adapters (limit
+orders unrepresentable otherwise; no POST retries — UNKNOWN-state
+rule), persisted kill switch + KillSwitchGate (fail-closed, zero
+exceptions), gated ExecutionEngine with full order journal, and the
+end-to-end demo `tools/demo_pipeline.py` (ran clean). Broker choice
+open per operator: research recommends Zerodha primary/Fyers backup,
+Angel retained until ratified. Next: Phase 2 continuation (corporate
+actions, quality validators, fetch adapter), Phase 3 strategy port,
+or WP-006. See `CURRENT_TASK.md` for exact scope and
+`PROJECT_STATE.yaml` for current metrics.

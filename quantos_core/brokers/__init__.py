@@ -1,9 +1,39 @@
-"""Common broker interface + adapters: Angel One, Zerodha, Interactive Brokers
-(future), Paper.
+"""Broker integration: one segregated port set (ADR-012), many
+adapters (ADR-011) -- Paper (#1), Zerodha Kite (#2), Angel One
+SmartAPI (#3), all substitutable with zero caller-side branching.
 
-Empty by design (QuantOS Constitution, Part IX / ADR-031). Phase 0 repository
-organization only -- no implementation yet. Populated starting Phase 1, per the
-frozen QuantOS Target Architecture Blueprint's module specification, strangler-
-fig migration (ADR-003), never a rewrite of the frozen scripts at the repo
-root.
+WP-008 (ADR-034 demo vertical slice). Limit orders only by type
+construction (SEBI/NSE algo rules). Real adapters refuse to construct
+without credentials and never retry POSTs (UNKNOWN-state rule,
+Constitution Part V). Depends on nothing else in quantos_core except
+utils (ADR-032).
 """
+
+from quantos_core.brokers.angel import AngelOneSmartApiAdapter
+from quantos_core.brokers.orders import (
+    BrokerAuthError,
+    BrokerConnectionError,
+    BrokerError,
+    LimitOrder,
+    OrderReceipt,
+    OrderRejectedError,
+    OrderSide,
+)
+from quantos_core.brokers.paper import PaperBrokerAdapter
+from quantos_core.brokers.ports import AccountReader, OrderPlacer
+from quantos_core.brokers.zerodha import ZerodhaKiteAdapter
+
+__all__ = [
+    "AccountReader",
+    "AngelOneSmartApiAdapter",
+    "BrokerAuthError",
+    "BrokerConnectionError",
+    "BrokerError",
+    "LimitOrder",
+    "OrderPlacer",
+    "OrderReceipt",
+    "OrderRejectedError",
+    "OrderSide",
+    "PaperBrokerAdapter",
+    "ZerodhaKiteAdapter",
+]

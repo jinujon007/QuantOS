@@ -1,0 +1,438 @@
+"""Tests for the WP-008 execution vertical slice (ADR-034).
+
+Paper broker fill/reject/rest semantics, kill-switch fail-closed
+behavior, engine gate-journal-place flow, and both real broker
+adapters exercised against fake transports -- zero network anywhere.
+"""
+
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+import requests
+
+from quantos_core.brokers import (
+    AngelOneSmartApiAdapter,
+    BrokerAuthError,
+    BrokerConnectionError,
+    LimitOrder,
+    OrderPlacer,
+    OrderRejectedError,
+    OrderSide,
+    PaperBrokerAdapter,
+    ZerodhaKiteAdapter,
+)
+from quantos_core.execution import ExecutionBlockedError, ExecutionEngine, OrderJournalEntry
+from quantos_core.risk import KillSwitch, KillSwitchGate, KillSwitchState, RiskLimitBreach
+from quantos_core.storage import SqliteRepository, StorageError
+
+
+def buy(ticker: str = "RELIANCE", qty: int = 10, limit: float = 100.0) -> LimitOrder:
+    return LimitOrder(ticker=ticker, side=OrderSide.BUY, quantity=qty, limit_price=limit)
+
+
+def sell(ticker: str = "RELIANCE", qty: int = 10, limit: float = 100.0) -> LimitOrder:
+    return LimitOrder(ticker=ticker, side=OrderSide.SELL, quantity=qty, limit_price=limit)
+
+
+# ── paper broker ──────────────────────────────────────────────────────────
+
+
+def test_paper_buy_fills_at_market_within_limit() -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 95.0}, cash=1000.0)
+    receipt = broker.place_order(buy(limit=100.0))
+    assert receipt.status == "FILLED"
+    assert receipt.average_price == 95.0
+    assert broker.holdings() == {"RELIANCE": 10}
+    assert broker.available_cash() == 1000.0 - 950.0
+
+
+def test_paper_buy_rests_open_when_limit_below_market() -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 105.0}, cash=10000.0)
+    receipt = broker.place_order(buy(limit=100.0))
+    assert receipt.status == "OPEN"
+    assert broker.holdings() == {}
+
+
+def test_paper_buy_insufficient_cash_rejected() -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 95.0}, cash=100.0)
+    with pytest.raises(OrderRejectedError, match="Insufficient"):
+        broker.place_order(buy())
+
+
+def test_paper_sell_round_trip_and_oversell_rejected() -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 100.0}, cash=1000.0)
+    broker.place_order(buy(qty=10, limit=100.0))
+    with pytest.raises(OrderRejectedError, match="hold only"):
+        broker.place_order(sell(qty=11, limit=90.0))
+    receipt = broker.place_order(sell(qty=10, limit=90.0))
+    assert receipt.status == "FILLED"
+    assert broker.holdings() == {}
+    assert broker.available_cash() == 1000.0
+
+
+def test_paper_unknown_ticker_rejected() -> None:
+    broker = PaperBrokerAdapter({}, cash=1000.0)
+    with pytest.raises(OrderRejectedError, match="No market price"):
+        broker.place_order(buy())
+
+
+def test_market_orders_are_unrepresentable() -> None:
+    with pytest.raises(Exception):
+        LimitOrder(ticker="X", side=OrderSide.BUY, quantity=1, limit_price=1.0, product="MIS")  # type: ignore[arg-type]
+
+
+# ── kill switch ───────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def kill_switch(tmp_path: Path) -> KillSwitch:
+    repo: SqliteRepository[KillSwitchState] = SqliteRepository(tmp_path / "risk.db", "kill_switch", KillSwitchState)
+    return KillSwitch(repo)
+
+
+def test_kill_switch_never_engaged_defaults_to_trading(kill_switch: KillSwitch) -> None:
+    assert kill_switch.is_engaged() is False
+
+
+def test_kill_switch_engage_release_persists(tmp_path: Path, kill_switch: KillSwitch) -> None:
+    kill_switch.engage("demo halt")
+    reopened = KillSwitch(SqliteRepository(tmp_path / "risk.db", "kill_switch", KillSwitchState))
+    assert reopened.is_engaged() is True
+    reopened.release("resume")
+    assert kill_switch.is_engaged() is False
+
+
+def test_kill_switch_unreadable_state_blocks() -> None:
+    class BrokenRepo:
+        def get(self, entity_id: str) -> KillSwitchState:
+            raise StorageError("disk gone")
+
+        def save(self, entity: KillSwitchState) -> None:
+            raise StorageError("disk gone")
+
+        def query(self, filter: Any) -> list[KillSwitchState]:
+            raise StorageError("disk gone")
+
+    assert KillSwitch(BrokenRepo()).is_engaged() is True  # fail-closed
+
+
+# ── engine ────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def journal(tmp_path: Path) -> SqliteRepository[OrderJournalEntry]:
+    return SqliteRepository(tmp_path / "journal.db", "order_journal", OrderJournalEntry)
+
+
+def test_engine_places_and_journals(kill_switch: KillSwitch, journal: SqliteRepository[OrderJournalEntry]) -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 95.0}, cash=10000.0)
+    engine = ExecutionEngine(broker, KillSwitchGate(kill_switch), journal, run_id="t1")
+    receipt = engine.execute(buy())
+    assert receipt.status == "FILLED"
+    entries = journal.query({})
+    assert len(entries) == 1
+    assert entries[0].outcome == "FILLED"
+    assert entries[0].broker_order_id == receipt.broker_order_id
+
+
+def test_engine_blocks_when_kill_switch_engaged(
+    kill_switch: KillSwitch, journal: SqliteRepository[OrderJournalEntry]
+) -> None:
+    kill_switch.engage("test")
+    broker = PaperBrokerAdapter({"RELIANCE": 95.0}, cash=10000.0)
+    engine = ExecutionEngine(broker, KillSwitchGate(kill_switch), journal, run_id="t2")
+    with pytest.raises(ExecutionBlockedError):
+        engine.execute(buy())
+    assert broker.holdings() == {}  # order never reached the broker
+    assert journal.query({})[0].outcome == "BLOCKED"
+
+
+def test_engine_journals_broker_rejection_and_reraises(
+    kill_switch: KillSwitch, journal: SqliteRepository[OrderJournalEntry]
+) -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 95.0}, cash=1.0)
+    engine = ExecutionEngine(broker, KillSwitchGate(kill_switch), journal, run_id="t3")
+    with pytest.raises(OrderRejectedError):
+        engine.execute(buy())
+    assert journal.query({})[0].outcome == "FAILED"
+
+
+def test_gate_raises_risk_limit_breach(kill_switch: KillSwitch) -> None:
+    kill_switch.engage("halt")
+    with pytest.raises(RiskLimitBreach):
+        KillSwitchGate(kill_switch).check(buy())
+
+
+# ── real adapters against fake transports ─────────────────────────────────
+
+
+class FakeResponse:
+    def __init__(self, payload: Any, status_code: int = 200) -> None:
+        self._payload = payload
+        self.status_code = status_code
+
+    def json(self) -> Any:
+        if isinstance(self._payload, str):
+            raise ValueError("not json")
+        return self._payload
+
+
+class FakeSession:
+    """Records requests; replays scripted responses. Raises if used
+    more times than scripted (catches unwanted retries)."""
+
+    def __init__(self, responses: list[Any]) -> None:
+        self._responses = list(responses)
+        self.calls: list[dict[str, Any]] = []
+
+    def _next(self, **call: Any) -> Any:
+        self.calls.append(call)
+        if not self._responses:
+            raise AssertionError("adapter made more HTTP calls than scripted (retry bug?)")
+        item = self._responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    def post(self, url: str, **kwargs: Any) -> Any:
+        return self._next(method="POST", url=url, **kwargs)
+
+    def get(self, url: str, **kwargs: Any) -> Any:
+        return self._next(method="GET", url=url, **kwargs)
+
+
+def test_zerodha_requires_credentials() -> None:
+    with pytest.raises(BrokerAuthError):
+        ZerodhaKiteAdapter(api_key="", access_token="")
+
+
+def test_zerodha_place_order_builds_correct_request() -> None:
+    session = FakeSession([FakeResponse({"status": "success", "data": {"order_id": "240714000001"}})])
+    adapter = ZerodhaKiteAdapter("key", "token", session=session)  # type: ignore[arg-type]
+    receipt = adapter.place_order(buy("TCS", 5, 4100.5))
+    assert receipt.broker_order_id == "240714000001"
+    assert receipt.status == "OPEN"
+    call = session.calls[0]
+    assert call["url"].endswith("/orders/regular")
+    assert call["data"] == {
+        "tradingsymbol": "TCS",
+        "exchange": "NSE",
+        "transaction_type": "BUY",
+        "order_type": "LIMIT",
+        "quantity": "5",
+        "price": "4100.50",
+        "product": "CNC",
+        "validity": "DAY",
+    }
+    assert call["headers"]["Authorization"] == "token key:token"
+    assert call["headers"]["X-Kite-Version"] == "3"
+
+
+def test_zerodha_token_failure_maps_to_auth_error() -> None:
+    session = FakeSession(
+        [FakeResponse({"status": "error", "error_type": "TokenException", "message": "expired"}, 403)]
+    )
+    adapter = ZerodhaKiteAdapter("key", "token", session=session)  # type: ignore[arg-type]
+    with pytest.raises(BrokerAuthError, match="expired"):
+        adapter.place_order(buy())
+
+
+def test_zerodha_network_failure_is_unknown_state_no_retry() -> None:
+    session = FakeSession([requests.ConnectionError("boom")])
+    adapter = ZerodhaKiteAdapter("key", "token", session=session)  # type: ignore[arg-type]
+    with pytest.raises(BrokerConnectionError, match="UNKNOWN"):
+        adapter.place_order(buy())
+    assert len(session.calls) == 1  # exactly one attempt -- no duplicate-order retry
+
+
+def test_zerodha_holdings_and_cash_parse() -> None:
+    session = FakeSession(
+        [
+            FakeResponse({"status": "success", "data": [{"tradingsymbol": "INFY", "quantity": 12}]}),
+            FakeResponse({"status": "success", "data": {"equity": {"available": {"live_balance": 54321.5}}}}),
+        ]
+    )
+    adapter = ZerodhaKiteAdapter("key", "token", session=session)  # type: ignore[arg-type]
+    assert adapter.holdings() == {"INFY": 12}
+    assert adapter.available_cash() == 54321.5
+
+
+def test_angel_requires_credentials_and_session() -> None:
+    with pytest.raises(BrokerAuthError):
+        AngelOneSmartApiAdapter(api_key="", client_code="", symbol_tokens={})
+    adapter = AngelOneSmartApiAdapter("key", "CLIENT1", symbol_tokens={}, session=FakeSession([]))  # type: ignore[arg-type]
+    with pytest.raises(BrokerAuthError, match="login"):
+        adapter.holdings()
+
+
+def test_angel_login_then_place_order_builds_correct_request() -> None:
+    session = FakeSession(
+        [
+            FakeResponse({"status": True, "data": {"jwtToken": "JWT123"}}),
+            FakeResponse({"status": True, "data": {"orderid": "AO-777"}}),
+        ]
+    )
+    adapter = AngelOneSmartApiAdapter(
+        "key",
+        "CLIENT1",
+        symbol_tokens={"TCS": "11536"},
+        session=session,  # type: ignore[arg-type]
+    )
+    adapter.login(pin="1234", totp_code="000000")
+    receipt = adapter.place_order(buy("TCS", 5, 4100.5))
+    assert receipt.broker_order_id == "AO-777"
+    login_call, order_call = session.calls
+    assert login_call["json"]["clientcode"] == "CLIENT1"
+    body = order_call["json"]
+    assert body["tradingsymbol"] == "TCS-EQ"
+    assert body["symboltoken"] == "11536"
+    assert body["producttype"] == "DELIVERY"
+    assert body["ordertype"] == "LIMIT"
+    assert order_call["headers"]["Authorization"] == "Bearer JWT123"
+    assert order_call["headers"]["X-PrivateKey"] == "key"
+
+
+def test_angel_unknown_symbol_token_refused() -> None:
+    session = FakeSession([FakeResponse({"status": True, "data": {"jwtToken": "J"}})])
+    adapter = AngelOneSmartApiAdapter("key", "C", symbol_tokens={}, session=session)  # type: ignore[arg-type]
+    adapter.login(pin="1", totp_code="2")
+    with pytest.raises(OrderRejectedError, match="symboltoken"):
+        adapter.place_order(buy("TCS"))
+
+
+def test_angel_auth_errorcode_maps_to_auth_error() -> None:
+    session = FakeSession(
+        [
+            FakeResponse({"status": True, "data": {"jwtToken": "J"}}),
+            FakeResponse({"status": False, "errorcode": "AG8001", "message": "Invalid Token"}),
+        ]
+    )
+    adapter = AngelOneSmartApiAdapter("key", "C", symbol_tokens={"TCS": "1"}, session=session)  # type: ignore[arg-type]
+    adapter.login(pin="1", totp_code="2")
+    with pytest.raises(BrokerAuthError, match="Invalid Token"):
+        adapter.place_order(buy("TCS"))
+
+
+def test_all_three_adapters_satisfy_the_same_port() -> None:
+    def accepts(placer: OrderPlacer) -> OrderPlacer:
+        return placer
+
+    paper = PaperBrokerAdapter({}, cash=0.0)
+    zerodha = ZerodhaKiteAdapter("k", "t", session=FakeSession([]))  # type: ignore[arg-type]
+    angel = AngelOneSmartApiAdapter("k", "c", symbol_tokens={}, session=FakeSession([]))  # type: ignore[arg-type]
+    assert accepts(paper) is paper
+    assert accepts(zerodha) is zerodha
+    assert accepts(angel) is angel
+
+
+def test_paper_negative_starting_cash_rejected() -> None:
+    with pytest.raises(OrderRejectedError, match="negative"):
+        PaperBrokerAdapter({}, cash=-1.0)
+
+
+def test_paper_sell_rests_open_when_limit_above_market() -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 100.0}, cash=2000.0)
+    broker.place_order(buy(qty=10, limit=100.0))
+    receipt = broker.place_order(sell(qty=4, limit=110.0))
+    assert receipt.status == "OPEN"
+    assert broker.holdings() == {"RELIANCE": 10}
+
+
+def test_paper_partial_sell_keeps_remainder() -> None:
+    broker = PaperBrokerAdapter({"RELIANCE": 100.0}, cash=2000.0)
+    broker.place_order(buy(qty=10, limit=100.0))
+    broker.place_order(sell(qty=4, limit=90.0))
+    assert broker.holdings() == {"RELIANCE": 6}
+
+
+def test_zerodha_non_json_response_is_connection_error() -> None:
+    session = FakeSession([FakeResponse("<html>gateway timeout</html>", 502)])
+    adapter = ZerodhaKiteAdapter("key", "token", session=session)  # type: ignore[arg-type]
+    with pytest.raises(BrokerConnectionError, match="non-JSON"):
+        adapter.place_order(buy())
+
+
+def test_zerodha_non_auth_error_is_rejection() -> None:
+    session = FakeSession([FakeResponse({"status": "error", "error_type": "InputException", "message": "bad qty"})])
+    adapter = ZerodhaKiteAdapter("key", "token", session=session)  # type: ignore[arg-type]
+    with pytest.raises(OrderRejectedError, match="bad qty"):
+        adapter.place_order(buy())
+
+
+def test_zerodha_get_network_failure_is_connection_error() -> None:
+    session = FakeSession([requests.ConnectionError("down")])
+    adapter = ZerodhaKiteAdapter("key", "token", session=session)  # type: ignore[arg-type]
+    with pytest.raises(BrokerConnectionError):
+        adapter.holdings()
+
+
+def angel_logged_in(responses: list[Any]) -> tuple[AngelOneSmartApiAdapter, FakeSession]:
+    session = FakeSession([FakeResponse({"status": True, "data": {"jwtToken": "J"}}), *responses])
+    adapter = AngelOneSmartApiAdapter("key", "C", symbol_tokens={"TCS": "1"}, session=session)  # type: ignore[arg-type]
+    adapter.login(pin="1", totp_code="2")
+    return adapter, session
+
+
+def test_angel_non_json_response_is_connection_error() -> None:
+    adapter, _ = angel_logged_in([FakeResponse("<html/>", 502)])
+    with pytest.raises(BrokerConnectionError, match="non-JSON"):
+        adapter.place_order(buy("TCS"))
+
+
+def test_angel_non_auth_rejection_maps_to_order_rejected() -> None:
+    adapter, _ = angel_logged_in([FakeResponse({"status": False, "errorcode": "AB1004", "message": "RMS block"})])
+    with pytest.raises(OrderRejectedError, match="RMS block"):
+        adapter.place_order(buy("TCS"))
+
+
+def test_angel_post_network_failure_is_unknown_state_no_retry() -> None:
+    adapter, session = angel_logged_in([requests.ConnectionError("boom")])
+    with pytest.raises(BrokerConnectionError, match="UNKNOWN"):
+        adapter.place_order(buy("TCS"))
+    assert len(session.calls) == 2  # login + exactly one placement attempt
+
+
+def test_angel_login_without_token_refused() -> None:
+    session = FakeSession([FakeResponse({"status": True, "data": {}})])
+    adapter = AngelOneSmartApiAdapter("key", "C", symbol_tokens={}, session=session)  # type: ignore[arg-type]
+    with pytest.raises(BrokerAuthError, match="jwtToken"):
+        adapter.login(pin="1", totp_code="2")
+
+
+def test_angel_place_order_without_orderid_is_unknown() -> None:
+    adapter, _ = angel_logged_in([FakeResponse({"status": True, "data": {}})])
+    with pytest.raises(BrokerConnectionError, match="no orderid"):
+        adapter.place_order(buy("TCS"))
+
+
+def test_angel_holdings_and_cash_parse() -> None:
+    adapter, _ = angel_logged_in(
+        [
+            FakeResponse({"status": True, "data": {"holdings": [{"tradingsymbol": "TCS-EQ", "quantity": 3}]}}),
+            FakeResponse({"status": True, "data": {"availablecash": "12345.67"}}),
+        ]
+    )
+    assert adapter.holdings() == {"TCS": 3}
+    assert adapter.available_cash() == 12345.67
+
+
+def test_angel_get_network_failure_is_connection_error() -> None:
+    adapter, _ = angel_logged_in([requests.ConnectionError("down")])
+    with pytest.raises(BrokerConnectionError):
+        adapter.holdings()
+
+
+def test_journal_entry_round_trips_as_json() -> None:
+    entry = OrderJournalEntry(
+        id="r-0001",
+        ticker="TCS",
+        side="BUY",
+        quantity=5,
+        limit_price=4100.5,
+        outcome="FILLED",
+        broker_order_id="X",
+        detail="filled=5",
+    )
+    assert json.loads(entry.model_dump_json())["outcome"] == "FILLED"

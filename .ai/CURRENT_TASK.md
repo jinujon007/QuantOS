@@ -1,9 +1,18 @@
 # Current Task
 
-**WP-007 — Data Platform Foundation: complete** (2026-07-14). Phase 2
-is now open. Same day: WP-003 (storage), WP-004 (logging), WP-005
-(import boundaries — TD-010 closed) all completed; **Phase 1 fully
-closed.** No work package is currently open.
+**WP-008 — Execution Vertical Slice: complete** (2026-07-14, ADR-034).
+Demo runs end-to-end: `python tools/demo_pipeline.py` — PIT universe →
+cached prices → labeled demo rank → kill-switch-gated limit orders →
+paper fills → audit journal. Broker adapters #2 (Zerodha Kite, native)
+and #3 (Angel One SmartAPI, native) built and tested behind the same
+port as PaperBroker — awaiting operator API keys
+(`tools/broker_connect_check.py`). Broker choice deliberately open per
+operator (research recommends Zerodha primary; not yet ratified).
+
+Earlier same day: WP-003 (storage), WP-004 (logging), WP-005 (import
+boundaries — TD-010 closed) → **Phase 1 fully closed**; WP-007 opened
+Phase 2 (PIT universe store, first snapshot 2026-07-14). No work
+package currently open.
 
 WP-007 delivered (ADR-033): segregated `UniverseProvider`/
 `PriceProvider` ports, `DataFetchError`, `SqliteUniverseStore` (PIT
