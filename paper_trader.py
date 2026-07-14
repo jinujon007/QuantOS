@@ -16,7 +16,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -42,14 +42,25 @@ LOG_FILE = _DIR / "data/paper_trades.csv"
 
 def load_state() -> dict:
     if STATE_FILE.exists():
-        state = json.loads(STATE_FILE.read_text())
+        try:
+            state = json.loads(STATE_FILE.read_text())
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            # Corrupt state (e.g. power loss mid-write). Silently reinitializing
+            # to Rs 1L would erase the validation account — fail loud instead.
+            bad = STATE_FILE.with_name(STATE_FILE.name + ".bad")
+            STATE_FILE.replace(bad)
+            print(f"ERROR: {STATE_FILE} is corrupt ({e}). Moved to {bad} — restore it manually before running.")
+            raise SystemExit(1)
         state.setdefault("pending_orders", [])
         return state
     return {"cash": float(INITIAL_CAPITAL), "holdings": {}, "pending_orders": [], "start_date": str(date.today())}
 
 
 def save_state(state: dict):
-    STATE_FILE.write_text(json.dumps(state, indent=2))
+    # Atomic write: a crash mid-write must never leave truncated JSON behind.
+    tmp = STATE_FILE.with_name(STATE_FILE.name + ".tmp")
+    tmp.write_text(json.dumps(state, indent=2))
+    tmp.replace(STATE_FILE)
 
 
 def log_trade(action: str, ticker: str, price: float, shares: float, reason: str = ""):
@@ -62,31 +73,34 @@ def log_trade(action: str, ticker: str, price: float, shares: float, reason: str
         "value": round(price * shares, 2),
         "reason": reason,
     }
-    df_new = pd.DataFrame([row])
-    if LOG_FILE.exists():
-        df_existing = pd.read_csv(LOG_FILE)
-        pd.concat([df_existing, df_new], ignore_index=True).to_csv(LOG_FILE, index=False)
-    else:
-        df_new.to_csv(LOG_FILE, index=False)
+    # True append — the old read-concat-rewrite pattern rewrote the whole
+    # audit trail on every trade, so one mid-write kill destroyed it all.
+    pd.DataFrame([row]).to_csv(LOG_FILE, mode="a", header=not LOG_FILE.exists(), index=False)
+
+
+def _fetch_close_frame(tickers: list[str]) -> pd.DataFrame | None:
+    """Last ~5 sessions of closes (rows=dates, columns=tickers). None on failure."""
+    if not tickers:
+        return None
+    try:
+        raw = yf.download(tickers, period="5d", auto_adjust=True, progress=False)
+        if raw.empty:
+            return None
+        if isinstance(raw.columns, pd.MultiIndex):
+            return raw["Close"]
+        return raw[["Close"]].rename(columns={"Close": tickers[0]})
+    except Exception as e:
+        print(f"Price fetch error: {e}")
+        return None
 
 
 def fetch_current_prices(tickers: list[str]) -> dict[str, float]:
     """Fetch latest close prices from yfinance."""
-    if not tickers:
+    frame = _fetch_close_frame(tickers)
+    if frame is None:
         return {}
-    try:
-        raw = yf.download(tickers, period="5d", auto_adjust=True, progress=False)
-        if raw.empty:
-            return {}
-        if isinstance(raw.columns, pd.MultiIndex):
-            close = raw["Close"]
-        else:
-            close = raw[["Close"]].rename(columns={"Close": tickers[0]})
-        latest = close.ffill().iloc[-1]
-        return {t: float(latest[t]) for t in tickers if t in latest and not pd.isna(latest[t])}
-    except Exception as e:
-        print(f"Price fetch error: {e}")
-        return {}
+    latest = frame.ffill().iloc[-1]
+    return {t: float(latest[t]) for t in tickers if t in latest and not pd.isna(latest[t])}
 
 
 def compute_momentum_scores() -> pd.Series:
@@ -117,14 +131,25 @@ def compute_momentum_scores() -> pd.Series:
         momentum = p_end / p_start - 1
 
         valid = close.loc[start_dt:end_dt].count() >= 120
-        return momentum[valid].dropna().sort_values(ascending=False)
+        scores = momentum[valid].dropna().sort_values(ascending=False)
+
+        # Coverage floor: yfinance rate-limiting can silently return a subset
+        # of the universe. Ranking a partial universe produces a confidently
+        # wrong top-10 — refuse rather than trade on it.
+        if len(scores) < 0.8 * len(tickers):
+            print(f"  Universe coverage too low: {len(scores)}/{len(tickers)} tickers ranked — refusing to rank.")
+            return pd.Series(dtype=float)
+        return scores
     except Exception as e:
         print(f"Momentum compute error: {e}")
         return pd.Series(dtype=float)
 
 
-def check_regime() -> bool:
-    """Return True if market is in uptrend (Nifty 50 > 100-day MA). False = bear market."""
+def check_regime() -> bool | None:
+    """True = uptrend (Nifty 50 > 100-day MA), False = bear market,
+    None = UNKNOWN (data unavailable). An unknown regime must never be
+    guessed: assuming bull during an outage would keep buying through a
+    real bear market — the exact failure the filter exists to prevent."""
     try:
         t = yf.Ticker("^NSEI")
         df = t.history(period=f"{TREND_MA_DAYS + 30}d", auto_adjust=True)
@@ -132,8 +157,8 @@ def check_regime() -> bool:
             t = yf.Ticker("NIFTYBEES.NS")
             df = t.history(period=f"{TREND_MA_DAYS + 30}d", auto_adjust=True)
         if df.empty:
-            print("  Regime check failed — assuming bull market.")
-            return True
+            print("  Regime check failed — regime UNKNOWN (no trading actions this run).")
+            return None
         close = df["Close"].copy()
         idx = pd.to_datetime(close.index)
         if idx.tz is not None:
@@ -147,8 +172,8 @@ def check_regime() -> bool:
         print(f"  Regime: Nifty {current:.0f} vs MA{TREND_MA_DAYS} {current_ma:.0f} → {status}")
         return bull
     except Exception as e:
-        print(f"  Regime check error: {e} — assuming bull market.")
-        return True
+        print(f"  Regime check error: {e} — regime UNKNOWN (no trading actions this run).")
+        return None
 
 
 def fill_pending_orders(cash: float, holdings: dict, pending: list) -> tuple[float, dict, list]:
@@ -159,20 +184,41 @@ def fill_pending_orders(cash: float, holdings: dict, pending: list) -> tuple[flo
     if not pending:
         return cash, holdings, pending
 
-    fill_prices = fetch_current_prices([o["ticker"] for o in pending])
+    frame = _fetch_close_frame([o["ticker"] for o in pending])
+    if frame is None or frame.empty:
+        return cash, holdings, pending  # no prices at all — retry next run
+    # The date of the newest price bar. An order may only fill on a bar
+    # NEWER than the one it was queued on — otherwise a same-day re-run or
+    # a market-holiday ffill executes at the very close that produced the
+    # signal (the look-ahead this queue exists to prevent).
+    bar_date = str(frame.index[-1].date())
+    latest = frame.ffill().iloc[-1]
+
     still_pending = []
     for o in pending:
-        px = fill_prices.get(o["ticker"])
-        if px is None or px <= 0:
+        if bar_date <= o.get("queued_on", ""):
+            still_pending.append(o)  # no new bar since queue — hold
+            continue
+        px = latest.get(o["ticker"])
+        if px is None or pd.isna(px) or px <= 0:
             still_pending.append(o)  # retry on next run
             continue
+        px = float(px)
         if o["type"] == "SELL":
+            if o["ticker"] not in holdings:
+                # Holding already gone (e.g. exited via an earlier order).
+                # Crediting a second time would corrupt the cash books.
+                print(f"  DROPPED SELL {o['ticker']} — no matching holding.")
+                continue
             proceeds = o["shares"] * px * (1 - SELL_RATE) - DP_CHARGE_PER_SCRIP
             cash += proceeds
             log_trade("SELL", o["ticker"], px, o["shares"], f"{o['reason']}_filled")
             print(f"  FILLED SELL {o['ticker']} @ ₹{px:.2f}  (queued: {o['reason']})")
-            holdings.pop(o["ticker"], None)
+            holdings.pop(o["ticker"])
         elif o["type"] == "BUY":
+            if o["ticker"] in holdings:
+                print(f"  DROPPED BUY {o['ticker']} — already held (duplicate order).")
+                continue
             cost = o["allocation"] * (1 + BUY_RATE)
             if cash >= cost:
                 shares = o["allocation"] / px
@@ -181,17 +227,37 @@ def fill_pending_orders(cash: float, holdings: dict, pending: list) -> tuple[flo
                 log_trade("BUY", o["ticker"], px, shares, f"{o['reason']}_filled")
                 print(f"  FILLED BUY  {o['ticker']} @ ₹{px:.2f}  (queued: {o['reason']})")
             else:
-                still_pending.append(o)  # insufficient cash, retry
+                # Same semantics as the backtest: when cash runs short the
+                # buy simply doesn't happen this cycle. Leaving it pending
+                # forever would fill weeks later at a stale allocation.
+                print(f"  DROPPED BUY {o['ticker']} — insufficient cash (₹{cash:,.0f} < ₹{cost:,.0f}).")
     return cash, holdings, still_pending
 
 
-def run_daily_update():
+def run_daily_update(force: bool = False):
+    # ── Kill switch — the operator's halt must halt THIS system too ──────────
+    try:
+        from api.collectors import production_kill_switch
+
+        halted = production_kill_switch().is_engaged()
+    except Exception as e:
+        print(f"  Kill-switch state unreadable ({e}) — refusing to run (fail closed).")
+        raise SystemExit(1)
+    if halted:
+        print("  KILL SWITCH ENGAGED — daily run halted. Release via tools/kill_switch.py or the desktop app.")
+        raise SystemExit(2)
+
     state = load_state()
     cash = state["cash"]
     holdings = state["holdings"]  # {ticker: {shares, entry_price}}
     pending = state["pending_orders"]
+    degraded: list[str] = []
 
     today = str(date.today())
+    if state.get("last_updated") == today and not force:
+        print(f"  Already ran today ({today}) — skipping to avoid concurrent state writes. Use --force to rerun.")
+        return
+
     print(f"\n{'=' * 60}")
     print(f"  PAPER TRADER — {today}")
     print(f"{'=' * 60}")
@@ -200,13 +266,23 @@ def run_daily_update():
     if pending:
         print(f"\n  Filling {len(pending)} order(s) queued last session...")
         cash, holdings, pending = fill_pending_orders(cash, holdings, pending)
+        # Persist fills IMMEDIATELY: log_trade already wrote the trade rows,
+        # and the Friday signal fetch below can run for minutes — a crash or
+        # scheduler kill in between would re-fill these orders on the next run.
+        state.update(cash=cash, holdings=holdings, pending_orders=pending)
+        save_state(state)
 
     # ── Regime check ─────────────────────────────────────────────────────────
-    bull_market = check_regime()
+    regime = check_regime()  # True=bull, False=bear, None=unknown
+    bull_market = regime is True
+    if regime is None:
+        degraded.append("regime unknown — no trading actions taken")
 
     # ── Current prices ────────────────────────────────────────────────────────
     all_tickers = list(holdings.keys())
     current_prices = fetch_current_prices(all_tickers) if all_tickers else {}
+    if all_tickers and not current_prices:
+        degraded.append("price fetch failed — stop-losses unmonitored this run")
 
     # ── Portfolio value ───────────────────────────────────────────────────────
     pos_value = sum(holdings[t]["shares"] * current_prices.get(t, holdings[t]["entry_price"]) for t in holdings)
@@ -230,16 +306,29 @@ def run_daily_update():
             )
 
     # ── Stop loss check — queue for fill next session, don't fill today ──────
-    already_queued: set[str] = set()
+    # Seeded from orders still pending from prior sessions: queueing a ticker
+    # that already has a live pending order would create duplicates, and a
+    # duplicate SELL double-credits cash / duplicate BUY double-debits it.
+    already_queued: set[str] = {o["ticker"] for o in pending}
 
     def queue_sell(ticker: str, reason: str):
         if ticker in already_queued:
             return
-        pending.append({"type": "SELL", "ticker": ticker, "shares": holdings[ticker]["shares"], "reason": reason})
+        pending.append(
+            {
+                "type": "SELL",
+                "ticker": ticker,
+                "shares": holdings[ticker]["shares"],
+                "reason": reason,
+                "queued_on": today,
+            }
+        )
         already_queued.add(ticker)
 
     def queue_buy(ticker: str, allocation: float, reason: str):
-        pending.append({"type": "BUY", "ticker": ticker, "allocation": allocation, "reason": reason})
+        pending.append(
+            {"type": "BUY", "ticker": ticker, "allocation": allocation, "reason": reason, "queued_on": today}
+        )
         already_queued.add(ticker)
 
     triggered = []
@@ -257,26 +346,39 @@ def run_daily_update():
         print(f"  Stop losses triggered: {triggered}")
 
     # ── Bear market: queue full liquidation ───────────────────────────────────
-    if not bull_market and holdings:
+    # Only on a CONFIRMED bear regime. An unknown regime must not liquidate —
+    # a yfinance outage would otherwise dump the whole portfolio.
+    if regime is False and holdings:
         print("\n  BEAR MARKET — queuing exit on all positions (fills next session).")
         for ticker in list(holdings.keys()):
             if ticker not in already_queued:
                 queue_sell(ticker, "bear_market_exit")
                 print(f"  QUEUE SELL {ticker}")
 
-    # ── Weekly rebalance check (runs on Fridays) ──────────────────────────────
+    # ── Weekly rebalance check (Fridays; Sat/Sun catch up a missed Friday) ────
     weekday = date.today().weekday()  # 0=Mon, 4=Fri
-    is_rebalance_day = weekday == 4
+    last_friday = date.today() - timedelta(days=(weekday - 4) % 7)
+    # Catch-up: if the machine was asleep/logged-out at Friday 15:40, the
+    # scheduler fires later (StartWhenAvailable). A weekend run must still do
+    # the week's rebalance — signals off Friday's close, fills Monday — or the
+    # validation record silently loses a week. last_rebalance_date guards
+    # against double-rebalancing when Friday's run DID happen.
+    is_rebalance_day = weekday >= 4 and state.get("last_rebalance_date", "") < str(last_friday)
 
-    if is_rebalance_day and not bull_market:
+    if is_rebalance_day and regime is None:
+        print("\n  Rebalance due but regime UNKNOWN — refusing to trade blind. Will retry next run.")
+    elif is_rebalance_day and regime is False:
         print("\n  Bear market — skipping rebalance. Holding cash.")
+        state["last_rebalance_date"] = str(last_friday)
     elif is_rebalance_day:
         print("\n  REBALANCE DAY — computing signals...")
         scores = compute_momentum_scores()
 
         if scores.empty:
             print("  Could not compute signals. Check data.")
+            degraded.append("rebalance due but signals unavailable")
         else:
+            state["last_rebalance_date"] = str(last_friday)
             target = set(scores.nlargest(TOP_N).index)
             current = set(holdings.keys())
 
@@ -317,6 +419,13 @@ def run_daily_update():
         print(f"\n  {len(pending)} order(s) queued — will fill at next session's open prices.")
     print(f"  State saved → {STATE_FILE}")
 
+    if degraded:
+        # Exit nonzero so the unattended runner logs FAILED instead of OK —
+        # a silent degraded run is indistinguishable from a healthy one in
+        # data/daily_run.log otherwise. State is already saved above.
+        print(f"\n  DEGRADED RUN: {'; '.join(degraded)}")
+        raise SystemExit(1)
+
 
 def show_status():
     state = load_state()
@@ -354,29 +463,87 @@ def show_status():
 def test_pending_order_fill():
     """Self-check: an order queued on day N must fill at day N+1's fetched price,
     not the price that triggered the signal — that's the whole point of the queue.
-    Monkeypatches fetch_current_prices/log_trade so it needs no network or disk."""
+    Also pins the book-integrity guards: same-bar fills refused, orphan SELLs and
+    duplicate/unaffordable BUYs dropped. Monkeypatches _fetch_close_frame/log_trade
+    so it needs no network or disk."""
     module = sys.modules[__name__]
-    orig_fetch, orig_log = module.fetch_current_prices, module.log_trade
+    orig_fetch, orig_log = module._fetch_close_frame, module.log_trade
 
-    module.fetch_current_prices = lambda tickers: {"TEST.NS": 90.0}
+    frame = pd.DataFrame({"TEST.NS": [90.0]}, index=[pd.Timestamp("2026-01-02")])
+    module._fetch_close_frame = lambda tickers: frame
     module.log_trade = lambda *a, **k: None
     try:
+        # 1) T+1 SELL fills at fetch-time price (queued before the newest bar)
         holdings = {"TEST.NS": {"shares": 10.0, "entry_price": 100.0}}
-        pending = [{"type": "SELL", "ticker": "TEST.NS", "shares": 10.0, "reason": "stop_loss"}]
+        pending = [
+            {"type": "SELL", "ticker": "TEST.NS", "shares": 10.0, "reason": "stop_loss", "queued_on": "2026-01-01"}
+        ]
         cash, holdings, still_pending = fill_pending_orders(0.0, holdings, pending)
         assert still_pending == [], "order should fill when a price is available"
         assert "TEST.NS" not in holdings, "sold ticker must leave holdings only on fill, not on queue"
         expected = 10.0 * 90.0 * (1 - SELL_RATE) - DP_CHARGE_PER_SCRIP
         assert abs(cash - expected) < 1e-6, f"fill used wrong price: got {cash}, expected {expected}"
 
-        holdings2 = {}
-        pending2 = [{"type": "BUY", "ticker": "TEST.NS", "allocation": 900.0, "reason": "rebalance_entry"}]
-        cash2, holdings2, still2 = fill_pending_orders(1000.0, holdings2, pending2)
-        assert still2 == []
-        assert holdings2["TEST.NS"]["entry_price"] == 90.0, "buy must fill at fetch-time price, not queue-time price"
+        # 2) Same-bar fill refused: queued on the newest bar's date → must hold
+        pending = [
+            {"type": "SELL", "ticker": "TEST.NS", "shares": 10.0, "reason": "stop_loss", "queued_on": "2026-01-02"}
+        ]
+        cash2, _, still2 = fill_pending_orders(0.0, {"TEST.NS": {"shares": 10.0, "entry_price": 100.0}}, pending)
+        assert still2 == pending, "same-bar fill is look-ahead — order must stay pending"
+        assert cash2 == 0.0, "no cash may move on a refused fill"
+
+        # 3) SELL with no matching holding is dropped, cash untouched
+        orphan = [
+            {"type": "SELL", "ticker": "TEST.NS", "shares": 10.0, "reason": "stop_loss", "queued_on": "2026-01-01"}
+        ]
+        cash3, _, still3 = fill_pending_orders(0.0, {}, orphan)
+        assert still3 == [] and cash3 == 0.0, "orphan SELL must be dropped without crediting cash"
+
+        # 4) T+1 BUY fills at fetch-time price
+        pending4 = [
+            {
+                "type": "BUY",
+                "ticker": "TEST.NS",
+                "allocation": 900.0,
+                "reason": "rebalance_entry",
+                "queued_on": "2026-01-01",
+            }
+        ]
+        cash4, holdings4, still4 = fill_pending_orders(1000.0, {}, pending4)
+        assert still4 == []
+        assert holdings4["TEST.NS"]["entry_price"] == 90.0, "buy must fill at fetch-time price, not queue-time price"
+
+        # 5) Unaffordable BUY is dropped (backtest semantics), never pends forever
+        broke = [
+            {
+                "type": "BUY",
+                "ticker": "TEST.NS",
+                "allocation": 900.0,
+                "reason": "rebalance_entry",
+                "queued_on": "2026-01-01",
+            }
+        ]
+        cash5, holdings5, still5 = fill_pending_orders(100.0, {}, broke)
+        assert still5 == [] and holdings5 == {} and cash5 == 100.0, "unaffordable buy must be dropped, cash untouched"
+
+        # 6) BUY for an already-held ticker is dropped (duplicate guard)
+        dup = [
+            {
+                "type": "BUY",
+                "ticker": "TEST.NS",
+                "allocation": 900.0,
+                "reason": "rebalance_entry",
+                "queued_on": "2026-01-01",
+            }
+        ]
+        held = {"TEST.NS": {"shares": 5.0, "entry_price": 80.0}}
+        cash6, holdings6, still6 = fill_pending_orders(1000.0, held, dup)
+        assert still6 == [] and cash6 == 1000.0 and holdings6["TEST.NS"]["shares"] == 5.0, (
+            "duplicate buy must not double-debit cash or overwrite the holding"
+        )
         print("[PASS] test_pending_order_fill")
     finally:
-        module.fetch_current_prices, module.log_trade = orig_fetch, orig_log
+        module._fetch_close_frame, module.log_trade = orig_fetch, orig_log
 
 
 if __name__ == "__main__":
@@ -387,4 +554,4 @@ if __name__ == "__main__":
     if "--status" in sys.argv:
         show_status()
     else:
-        run_daily_update()
+        run_daily_update(force="--force" in sys.argv)

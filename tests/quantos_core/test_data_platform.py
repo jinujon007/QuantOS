@@ -153,6 +153,36 @@ def test_empty_window_fails_loudly(cache_dir: Path) -> None:
         CsvCachePriceProvider(cache_dir).get_prices([Ticker("AAA.NS")], date(2025, 1, 1), date(2025, 1, 2))
 
 
+def test_non_positive_close_fails_loudly(cache_dir: Path) -> None:
+    """A stray 0.0 close (yfinance artifact) would become +inf momentum and
+    rank the corrupt ticker #1 -- the provider must refuse it (2026-07-14 audit)."""
+    (cache_dir / "ZERO_NS.csv").write_text("Date,Close\n2019-01-01,0.0\n2019-01-02,101.0\n", encoding="utf-8")
+    with pytest.raises(DataFetchError, match="Non-positive close"):
+        CsvCachePriceProvider(cache_dir).get_prices([Ticker("ZERO.NS")], date(2019, 1, 1), date(2019, 1, 3))
+    (cache_dir / "NEG_NS.csv").write_text("Date,Close\n2019-01-01,-5.0\n", encoding="utf-8")
+    with pytest.raises(DataFetchError, match="Non-positive close"):
+        CsvCachePriceProvider(cache_dir).get_prices([Ticker("NEG.NS")], date(2019, 1, 1), date(2019, 1, 3))
+
+
+def test_duplicate_dates_fail_loudly(cache_dir: Path) -> None:
+    """Duplicate index rows (interrupted cache re-write) must be a typed
+    failure, not a raw pandas reindex error downstream."""
+    (cache_dir / "DUP_NS.csv").write_text(
+        "Date,Close\n2019-01-01,100.0\n2019-01-01,100.5\n2019-01-02,101.0\n", encoding="utf-8"
+    )
+    with pytest.raises(DataFetchError, match="Duplicate dates"):
+        CsvCachePriceProvider(cache_dir).get_prices([Ticker("DUP.NS")], date(2019, 1, 1), date(2019, 1, 3))
+
+
+def test_unsorted_dates_fail_loudly(cache_dir: Path) -> None:
+    """An unsorted index silently mis-slices .loc windows -- refuse it."""
+    (cache_dir / "SHUF_NS.csv").write_text(
+        "Date,Close\n2019-01-03,99.0\n2019-01-01,100.0\n2019-01-02,101.0\n", encoding="utf-8"
+    )
+    with pytest.raises(DataFetchError, match="Unsorted dates"):
+        CsvCachePriceProvider(cache_dir).get_prices([Ticker("SHUF.NS")], date(2019, 1, 1), date(2019, 1, 3))
+
+
 def test_ticker_absent_from_window_fails_per_ticker_not_silently(cache_dir: Path) -> None:
     # AAA has 2019-01-01..03; LATE lists only from 2019-06-01. Asking for
     # January must fail on LATE, not return an all-NaN column beside AAA.

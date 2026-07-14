@@ -272,4 +272,4 @@ Key goes in `.env` file (copy `.env.example`). Not needed until LLM signal layer
 
 ---
 
-*Last updated: 2026-06-09 by Claude*
+*Last updated: 2026-07-14 by Claude (program audit — see `docs/00_governance/(AI) Program Log and Audit - 2026-07-14.md`)*

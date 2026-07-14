@@ -1,7 +1,8 @@
 # Status
 
-**Phase:** Phase 1 (Engineering Foundation)
-**Last work package:** WP-000 — Repository Organization (complete, 2026-07-13)
+**Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009)
+**Last work package:** WP-011 — QuantOS Desktop (2026-07-14, ADR-036)
+**Business phase (EXECUTION_PLAN.md vocabulary):** Prospective Validation — paper trading, 0/13 weekly rebalances logged
 
 ## What's done
 
@@ -9,17 +10,37 @@
   lock, CI, repo standards — zero behavioral change to the six original
   scripts (`momentum_backtest.py`, `paper_trader.py`, `transaction_costs.py`,
   `fetch_universe.py`, `download_data.py`, `factor_attribution.py`).
-- WP-000: `docs/` hierarchy reorganized, `quantos_core/` package skeleton
-  scaffolded (empty, no logic), Technical Debt Register and Risk Register
-  stood up as living documents.
+- WP-000: `docs/` hierarchy reorganized, `quantos_core/` package skeleton,
+  Technical Debt Register and Risk Register stood up.
+- WP-001–005 (Phase 1, closed): strict typing gate, typed immutable AppConfig,
+  `Repository[T]` + transactional SQLite, JSON-lines structured logging,
+  enforced import-boundary matrix (ADR-032).
+- WP-007 (Phase 2, opened): DataProvider ports, PIT universe store,
+  fail-closed CSV price provider (ADR-033).
+- WP-008 + review hardening: broker ports, Paper/Zerodha/Angel adapters,
+  persisted kill switch, gated ExecutionEngine + order journal (ADR-034);
+  UNKNOWN-state error taxonomy, fail-closed price paths.
+- WP-009 (Phase 3, opened): Momentum v1.0 behind the Strategy port,
+  byte-equal parity with the frozen script, params in
+  `strategies_registry/momentum_v1.yaml` (ADR-015).
+- WP-010: static read-only operator console + kill-switch CLI (ADR-035).
+- Ops: unattended daily runner + Windows scheduled task, weekdays 15:40
+  (`tools/daily_run.ps1`).
+- WP-011: QuantOS Desktop — local FastAPI on 127.0.0.1:8742 + Edge app
+  window; broker connect flows, dashboard, kill-switch UI (ADR-036).
 
-## In progress
+## In progress / next
 
-Phase 1 engineering foundation — migrating logic into `quantos_core/` per
-the frozen Blueprint and Constitution.
+- Prospective validation: accumulate 13 clean weekly rebalances
+  (gate review 2026-09-09). `paper_trader.py` remains the running system
+  of record until WP-012/013 wire `MomentumV1` into the live cycle.
+- WP-006 (layered configuration) — reserved, not built.
+- WP-012 portfolio module, WP-013 `run_cycle` — planned next per
+  operator interview 2026-07-14.
 
 ## Tracking
 
 - Per-work-package reports: `docs/00_governance/Program Status Reports/`
 - Open risks: `docs/00_governance/Risk Register.md`
 - Known debt: `docs/00_governance/Technical Debt Register.md`
+- ADRs: `docs/adr/` (031+) and Constitution Part VI (001–030)

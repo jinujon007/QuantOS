@@ -25,7 +25,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from quantos_core.brokers import LimitOrder, OrderSide, PaperBrokerAdapter, to_tick  # noqa: E402
+from quantos_core.brokers import LimitOrder, OrderSide, PaperBrokerAdapter, to_tick_up  # noqa: E402
 from quantos_core.config import load_config  # noqa: E402
 from quantos_core.data import CsvCachePriceProvider, SqliteUniverseStore  # noqa: E402
 from quantos_core.execution import ExecutionBlockedError, ExecutionEngine, OrderJournalEntry  # noqa: E402
@@ -138,9 +138,10 @@ def main() -> int:
         if quantity == 0:
             print(f"  {symbol:<12} SKIPPED -- one share ({price:.2f}) exceeds the {slot:.0f} slot")
             continue
-        # 0.2% above market, rounded DOWN to the NSE 0.05 tick grid --
-        # an off-grid limit price is an exchange rejection, not a fill.
-        order = LimitOrder(ticker=symbol, side=OrderSide.BUY, quantity=quantity, limit_price=to_tick(price * 1.002))
+        # 0.2% above market, rounded UP to the band-aware NSE tick grid --
+        # an off-grid limit is an exchange rejection, and a buy limit
+        # floored BELOW market rests unfilled forever (sub-Rs25 names).
+        order = LimitOrder(ticker=symbol, side=OrderSide.BUY, quantity=quantity, limit_price=to_tick_up(price * 1.002))
         receipt = engine.execute(order)
         print(
             f"  {symbol:<12} BUY {quantity:4d} @ limit {order.limit_price:10.2f}"

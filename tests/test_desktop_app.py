@@ -53,6 +53,36 @@ def test_kill_switch_requires_reason() -> None:
     assert client.post("/api/killswitch", json={"action": "engage", "reason": ""}).status_code == 422
 
 
+def test_foreign_host_header_rejected() -> None:
+    """DNS-rebinding guard: a rebound hostname must never reach a handler."""
+    response = client.post(
+        "/api/killswitch",
+        json={"action": "release", "reason": "drive-by"},
+        headers={"host": "attacker.example"},
+    )
+    assert response.status_code == 400
+
+
+def test_non_json_content_type_rejected_on_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Form/simple-request CSRF guard: text/plain bodies must not flip the switch.
+
+    This property currently comes from FastAPI's strict content-type default --
+    pin it so a dependency or config change can't silently remove it.
+    """
+    repo: SqliteRepository[KillSwitchState] = SqliteRepository(tmp_path / "risk.db", "kill_switch", KillSwitchState)
+    switch = KillSwitch(repo)
+    switch.engage("pinned halt")
+    monkeypatch.setattr(server, "production_kill_switch", lambda: switch)
+
+    response = client.post(
+        "/api/killswitch",
+        content='{"action": "release", "reason": "csrf"}',
+        headers={"content-type": "text/plain"},
+    )
+    assert response.status_code in (415, 422)
+    assert switch.is_engaged() is True
+
+
 class FakeAdapter:
     def holdings(self) -> dict[str, int]:
         return {"TCS": 5}

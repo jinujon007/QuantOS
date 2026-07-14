@@ -40,6 +40,19 @@ class CsvCachePriceProvider:
             raise DataFetchError(f"Unreadable price cache for {ticker!s} ({path.name}): {exc}") from exc
         if closes.empty:
             raise DataFetchError(f"Price cache for {ticker!s} is empty ({path.name})")
+        # A zero/negative close is a data artifact (yfinance emits stray 0.0
+        # rows) -- and momentum's p_end/p_start would turn it into +inf and
+        # rank the corrupt ticker #1. Fail closed here, not in the factor
+        # (the factor is parity-pinned to the frozen script, ADR-003).
+        if bool((closes.dropna() <= 0).any()):
+            raise DataFetchError(f"Non-positive close in price cache for {ticker!s} ({path.name})")
+        # Duplicate or unsorted dates would surface as raw pandas errors (or
+        # silently wrong .loc window slices) downstream -- realistic after an
+        # interrupted cache write, so make it a typed failure.
+        if bool(closes.index.has_duplicates):
+            raise DataFetchError(f"Duplicate dates in price cache for {ticker!s} ({path.name})")
+        if not bool(closes.index.is_monotonic_increasing):
+            raise DataFetchError(f"Unsorted dates in price cache for {ticker!s} ({path.name})")
         return closes
 
     def get_prices(self, tickers: list[Ticker], start: date, end: date) -> pd.DataFrame:

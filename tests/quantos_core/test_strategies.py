@@ -74,17 +74,13 @@ def test_weights_are_immutable() -> None:
 
 def test_momentum_ranks_winner_over_loser() -> None:
     prices = make_prices()
-    scores = momentum_12m1m(
-        prices, pd.Timestamp("2021-06-25"), lookback_months=12, skip_months=1, min_observations=5
-    )
+    scores = momentum_12m1m(prices, pd.Timestamp("2021-06-25"), lookback_months=12, skip_months=1, min_observations=5)
     assert scores["WINNER"] > scores["FLAT"] > scores["LOSER"]
 
 
 def test_momentum_empty_before_history_starts() -> None:
     prices = make_prices()
-    scores = momentum_12m1m(
-        prices, pd.Timestamp("2019-06-01"), lookback_months=12, skip_months=1, min_observations=5
-    )
+    scores = momentum_12m1m(prices, pd.Timestamp("2019-06-01"), lookback_months=12, skip_months=1, min_observations=5)
     assert scores.empty
 
 
@@ -92,9 +88,7 @@ def test_momentum_quality_filter_drops_sparse_ticker() -> None:
     prices = make_prices()
     sparse = prices.copy()
     sparse.loc[sparse.index < "2021-05-20", "LOSER"] = float("nan")
-    scores = momentum_12m1m(
-        sparse, pd.Timestamp("2021-06-25"), lookback_months=12, skip_months=1, min_observations=50
-    )
+    scores = momentum_12m1m(sparse, pd.Timestamp("2021-06-25"), lookback_months=12, skip_months=1, min_observations=50)
     assert "LOSER" not in scores.index
     assert "WINNER" in scores.index
 
@@ -105,6 +99,20 @@ def test_momentum_quality_filter_drops_sparse_ticker() -> None:
 def test_regime_true_before_any_data() -> None:
     series = uptrend_series(pd.Series([1.0, 2.0], index=pd.to_datetime(["2021-01-01", "2021-01-02"])), 100)
     assert is_uptrend(series, pd.Timestamp("2020-01-01")) is True  # frozen permissive default
+
+
+def test_regime_warmup_has_no_value_not_bear() -> None:
+    """The MA warm-up window must be ABSENT from the uptrend series, not
+    silently False: `close > NaN` is False on a bool series and .dropna()
+    is a no-op there, so the naive port reported the first ma_days-1 dates
+    as BEAR — weeks of wrongful cash stance for any caller that doesn't
+    pre-fetch extra history (2026-07-14 audit)."""
+    idx = pd.date_range("2021-01-01", periods=10, freq="D")
+    rising = pd.Series([float(i) for i in range(1, 11)], index=idx)
+    series = uptrend_series(rising, 5)
+    assert series.index[0] == idx[4], "warm-up rows must be dropped, not reported False"
+    assert is_uptrend(series, idx[2]) is True  # warm-up -> no value -> permissive default
+    assert bool(series.loc[idx[4]]) is True  # rising series sits above its MA
 
 
 # ── strategy behavior on synthetic data ──────────────────────────────────

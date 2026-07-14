@@ -400,6 +400,91 @@ def test_zerodha_get_network_failure_is_connection_error() -> None:
         adapter.holdings()
 
 
+def test_zerodha_data_null_reads_do_not_crash_or_disguise() -> None:
+    """success + data:null (or a missing data key) is an ambiguous body, not
+    an empty portfolio -- returning {} would read as 'all positions gone'
+    (mirror of the Angel data:null hardening; 2026-07-14 audit)."""
+    adapter = ZerodhaKiteAdapter(
+        "key",
+        "token",
+        session=FakeSession([FakeResponse({"status": "success", "data": None})]),  # type: ignore[arg-type]
+    )
+    with pytest.raises(BrokerConnectionError, match="ambiguous"):
+        adapter.holdings()
+    adapter = ZerodhaKiteAdapter(
+        "key",
+        "token",
+        session=FakeSession([FakeResponse({"status": "success"})]),  # type: ignore[arg-type]
+    )
+    with pytest.raises(BrokerConnectionError, match="ambiguous"):
+        adapter.holdings()
+    adapter = ZerodhaKiteAdapter(
+        "key",
+        "token",
+        session=FakeSession([FakeResponse({"status": "success", "data": {"equity": {}}})]),  # type: ignore[arg-type]
+    )
+    with pytest.raises(BrokerConnectionError, match="missing expected fields"):
+        adapter.available_cash()
+
+
+def test_angel_login_rejection_is_auth_error_not_order_rejection() -> None:
+    """SmartAPI rejects a wrong PIN/TOTP with HTTP 200 + AB-series codes;
+    a login call places no order, so it must surface as BrokerAuthError."""
+    session = FakeSession([FakeResponse({"status": False, "errorcode": "AB1007", "message": "Invalid totp"})])
+    adapter = AngelOneSmartApiAdapter("k", "c", symbol_tokens={}, session=session)  # type: ignore[arg-type]
+    with pytest.raises(BrokerAuthError, match="Invalid totp"):
+        adapter.login(pin="0000", totp_code="123456")
+
+
+def test_engine_journal_failure_after_placement_returns_receipt(
+    kill_switch: KillSwitch,
+) -> None:
+    """A journal write failure AFTER the broker accepted must never mask the
+    placement: raising StorageError would make a PLACED order look like it
+    never happened, and a re-run would place it again (2026-07-14 audit)."""
+
+    class BrokenJournal:
+        def get(self, entity_id: str) -> OrderJournalEntry:
+            raise StorageError("disk gone")
+
+        def save(self, entity: OrderJournalEntry) -> None:
+            raise StorageError("disk gone")
+
+        def query(self, filter: Any) -> list[OrderJournalEntry]:
+            return []  # constructor sequence-resume works; writes fail
+
+    broker = PaperBrokerAdapter({"RELIANCE": 95.0}, cash=10000.0)
+    engine = ExecutionEngine(broker, KillSwitchGate(kill_switch), BrokenJournal(), run_id="t-journal")  # type: ignore[arg-type]
+    receipt = engine.execute(buy())
+    assert receipt.status == "FILLED"  # placement truth outranks journal completeness
+    assert broker.holdings() == {"RELIANCE": 10}
+
+
+def test_engine_journal_failure_on_block_still_raises_blocked(
+    kill_switch: KillSwitch,
+) -> None:
+    """A journal failure on the BLOCKED path must not replace
+    ExecutionBlockedError with StorageError -- callers branch on the block
+    signal (e.g. the kill-switch drill)."""
+
+    class BrokenJournal:
+        def get(self, entity_id: str) -> OrderJournalEntry:
+            raise StorageError("disk gone")
+
+        def save(self, entity: OrderJournalEntry) -> None:
+            raise StorageError("disk gone")
+
+        def query(self, filter: Any) -> list[OrderJournalEntry]:
+            return []
+
+    kill_switch.engage("halt")
+    broker = PaperBrokerAdapter({"RELIANCE": 95.0}, cash=10000.0)
+    engine = ExecutionEngine(broker, KillSwitchGate(kill_switch), BrokenJournal(), run_id="t-blocked")  # type: ignore[arg-type]
+    with pytest.raises(ExecutionBlockedError):
+        engine.execute(buy())
+    assert broker.holdings() == {}  # order never reached the broker
+
+
 def angel_logged_in(responses: list[Any]) -> tuple[AngelOneSmartApiAdapter, FakeSession]:
     session = FakeSession([FakeResponse({"status": True, "data": {"jwtToken": "J"}}), *responses])
     adapter = AngelOneSmartApiAdapter("key", "C", symbol_tokens={"TCS": "1"}, session=session)  # type: ignore[arg-type]
@@ -531,16 +616,41 @@ def test_order_validators_reject_garbage() -> None:
 def test_to_tick_rounds_down_to_nse_grid() -> None:
     from quantos_core.brokers import to_tick
 
+    # >= Rs250 band: 5-paise grid (unchanged by the 2024-06-10 reform)
     assert to_tick(547.02) == 547.00
     assert to_tick(547.04999) == 547.00
     assert to_tick(547.05) == 547.05
-    assert to_tick(196.29) == 196.25
-    assert to_tick(0.03) == 0.05  # floor of one tick, never zero
-    assert to_tick(0.09999999) == 0.05  # float-dust just below a tick never rounds up past price
+    # < Rs250 band: 1-paise grid — 196.29 is already on-grid post-reform
+    assert to_tick(196.29) == 196.29
+    assert to_tick(0.03) == 0.03
+    assert to_tick(0.004) == 0.01  # floor of one tick, never zero
+    # explicit tick override keeps the old flat-grid behavior available
+    assert to_tick(196.29, tick=0.05) == 196.25
+    assert to_tick(0.09999999, tick=0.05) == 0.05  # float-dust below a tick never rounds up past price
     with pytest.raises(ValueError):
         to_tick(0.0)
     with pytest.raises(ValueError):
         to_tick(-1.0)
+
+
+def test_to_tick_up_never_lands_below_price() -> None:
+    """A BUY limit floored below market rests unfilled forever — buy
+    limits must round UP to the grid (finding: sub-Rs25 momentum names
+    were silently excluded under the old flat 0.05 floor)."""
+    from quantos_core.brokers import nse_tick_size, to_tick_up
+
+    assert nse_tick_size(7.43) == 0.01
+    assert nse_tick_size(249.99) == 0.01
+    assert nse_tick_size(250.00) == 0.05
+    # The IDEA-range scenario: market 7.43, +0.2% buffer = 7.44486.
+    # Old behavior floored to 7.40 < market (never fills); now 7.45.
+    assert to_tick_up(7.43 * 1.002) == 7.45
+    assert to_tick_up(7.43 * 1.002) >= 7.43
+    assert to_tick_up(547.02) == 547.05  # >= Rs250 band ceils on 0.05
+    assert to_tick_up(547.05) == 547.05  # on-grid stays put
+    assert to_tick_up(196.29) == 196.29
+    with pytest.raises(ValueError):
+        to_tick_up(0.0)
 
 
 def test_angel_missing_availablecash_refuses_to_guess() -> None:

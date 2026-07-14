@@ -23,6 +23,7 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.collectors import REPO, collect_all, production_kill_switch
 from quantos_core.brokers import (
@@ -34,6 +35,14 @@ from quantos_core.brokers import (
 )
 
 app = FastAPI(title="QuantOS Desktop", docs_url=None, redoc_url=None)
+
+# DNS-rebinding guard: 127.0.0.1 binding alone does not stop a browser the
+# operator is already running from reaching this server via a rebound
+# hostname (attacker.com -> 127.0.0.1 is same-origin to the attacker page,
+# so no CORS preflight protects the kill switch). Reject any Host header
+# that isn't the loopback names this app is actually served on.
+# "testserver" is FastAPI TestClient's default Host.
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 # In-memory broker sessions: {"zerodha": adapter, "angel": adapter}
 _sessions: dict[str, Any] = {}

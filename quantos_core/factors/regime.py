@@ -15,9 +15,19 @@ import pandas as pd
 
 
 def uptrend_series(index_close: "pd.Series[float]", ma_days: int) -> "pd.Series[bool]":
-    """True where the index closes above its ma_days-day simple MA."""
+    """True where the index closes above its ma_days-day simple MA.
+
+    The MA warm-up window is dropped EXPLICITLY: `close > NaN` compares as
+    False on a bool series and .dropna() is then a no-op, so the naive port
+    silently reported the first ma_days-1 dates as BEAR. The frozen script
+    masked this by always pre-fetching extra history; this pure function
+    can't assume that. Output is byte-identical to the frozen script for
+    pre-warmed input (parity preserved); for short input, dates without a
+    valid MA now correctly have no value (is_uptrend then applies its
+    documented permissive default).
+    """
     ma = index_close.rolling(ma_days).mean()
-    result: "pd.Series[bool]" = (index_close > ma).dropna()
+    result: "pd.Series[bool]" = (index_close > ma)[ma.notna()]
     return result
 
 

@@ -89,11 +89,20 @@ def test_top10_selection_identical(matrix: pd.DataFrame, index_close: "pd.Series
 
 
 def test_regime_series_identical_to_frozen_math(index_close: "pd.Series[float]") -> None:
-    # Same construction the frozen script applies to the same cached
-    # series: close > rolling(TREND_MA_DAYS).mean(), dropna.
-    expected = (index_close > index_close.rolling(frozen.TREND_MA_DAYS).mean()).dropna()
+    # Frozen construction: close > rolling MA, dropna. On a bool series
+    # .dropna() is a no-op, so the frozen output also carries ma_days-1
+    # warm-up rows that read False only because `x > NaN` is False --
+    # not because the market was below its MA. The port drops the
+    # warm-up EXPLICITLY (2026-07-14 audit): byte-identical everywhere a
+    # real MA value exists, which is the only region any signal reads
+    # (the backtest window starts well after the cache's warm-up).
+    ma = index_close.rolling(frozen.TREND_MA_DAYS).mean()
+    expected = (index_close > ma)[ma.notna()]
     got = uptrend_series(index_close, PARAMS.trend_ma_days)
     assert got.equals(expected)
+    # Warm-up dates must be ABSENT (permissive default applies there),
+    # never silently False (bear).
+    assert not got.index.isin(index_close.index[: frozen.TREND_MA_DAYS - 1]).any()
 
 
 def test_regime_as_of_lookup_matches_frozen_inline_logic(index_close: "pd.Series[float]") -> None:

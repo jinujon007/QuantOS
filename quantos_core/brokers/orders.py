@@ -11,23 +11,49 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
-NSE_TICK = 0.05
+NSE_TICK = 0.05  # legacy flat grid; still correct for the >= Rs250 band
 
 
-def to_tick(price: float, tick: float = NSE_TICK) -> float:
-    """Round a price DOWN to the exchange tick grid.
+def nse_tick_size(price: float) -> float:
+    """NSE equity tick by price band (reform effective 2024-06-10):
+    Rs0.01 below Rs250, Rs0.05 at or above. The old flat 5-paise
+    assumption floors sub-Rs25 limit prices below market, where a buy
+    rests unfilled forever."""
+    if price <= 0:
+        raise ValueError(f"No tick size for non-positive price {price}")
+    return 0.01 if price < 250.0 else 0.05
+
+
+def to_tick(price: float, tick: float | None = None) -> float:
+    """Round a price DOWN to the exchange tick grid (band-aware by default).
 
     NSE rejects limit prices off the tick grid; rounding down is the
-    conservative direction for buys (never pay above intent) and for
-    the seller it only concedes one tick. Raises on non-positive input
-    rather than returning a zero price.
+    conservative direction for sells (only concedes one tick). Raises on
+    non-positive input rather than returning a zero price.
     """
     if price <= 0:
         raise ValueError(f"Cannot tick-round non-positive price {price}")
-    ticks = int(round(price / tick, 6))  # 6dp guard against float dust before flooring
-    if ticks * tick > price + 1e-9:
+    t = nse_tick_size(price) if tick is None else tick
+    ticks = int(round(price / t, 6))  # 6dp guard against float dust before flooring
+    if ticks * t > price + 1e-9:
         ticks -= 1
-    return round(max(ticks, 1) * tick, 2)
+    return round(max(ticks, 1) * t, 2)
+
+
+def to_tick_up(price: float, tick: float | None = None) -> float:
+    """Round a price UP to the exchange tick grid (band-aware by default).
+
+    The right direction for BUY limits: flooring a buy limit can land it
+    BELOW the market price, where it can never fill -- silently excluding
+    the ticker from the portfolio. Ceiling concedes at most one tick.
+    """
+    if price <= 0:
+        raise ValueError(f"Cannot tick-round non-positive price {price}")
+    t = nse_tick_size(price) if tick is None else tick
+    ticks = int(round(price / t, 6))
+    if ticks * t < price - 1e-9:
+        ticks += 1
+    return round(max(ticks, 1) * t, 2)
 
 
 class BrokerError(Exception):

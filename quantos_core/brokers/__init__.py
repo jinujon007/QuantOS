@@ -19,7 +19,9 @@ from quantos_core.brokers.orders import (
     OrderReceipt,
     OrderRejectedError,
     OrderSide,
+    nse_tick_size,
     to_tick,
+    to_tick_up,
 )
 from quantos_core.brokers.paper import PaperBrokerAdapter
 from quantos_core.brokers.ports import AccountReader, OrderPlacer
@@ -41,5 +43,7 @@ __all__ = [
     "ZerodhaKiteAdapter",
     "exchange_request_token",
     "kite_login_url",
+    "nse_tick_size",
     "to_tick",
+    "to_tick_up",
 ]

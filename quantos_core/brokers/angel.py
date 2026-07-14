@@ -97,12 +97,20 @@ class AngelOneSmartApiAdapter:
 
     def login(self, pin: str, totp_code: str) -> None:
         """Establish the daily session (SEBI: 2FA per API session)."""
-        payload = self._post(
-            "/rest/auth/angelbroking/user/v1/loginByPassword",
-            {"clientcode": self._client_code, "password": pin, "totp": totp_code},
-            "login",
-            authorized=False,
-        )
+        try:
+            payload = self._post(
+                "/rest/auth/angelbroking/user/v1/loginByPassword",
+                {"clientcode": self._client_code, "password": pin, "totp": totp_code},
+                "login",
+                authorized=False,
+            )
+        except OrderRejectedError as exc:
+            # A login call places no order. SmartAPI rejects a wrong
+            # PIN/TOTP with HTTP 200 + AB-series codes, which _parse's
+            # generic routing types as an order rejection -- re-type so
+            # callers branching on BrokerAuthError (re-prompt credentials)
+            # see the truth.
+            raise BrokerAuthError(f"SmartAPI login rejected: {exc}") from exc
         # SmartAPI can return "status": true with "data": null -- the
         # `or {}` coercion keeps every present-but-null body from
         # crashing; each site then fail-closes on the missing value.

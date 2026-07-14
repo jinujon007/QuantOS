@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from quantos_core.data import SqliteUniverseStore, Ticker  # noqa: E402
+from quantos_core.data import DataFetchError, SqliteUniverseStore, Ticker  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -38,12 +38,25 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("snapshot_date", type=date.fromisoformat)
     parser.add_argument("--replace", action="store_true")
+    parser.add_argument(
+        "--skip-if-exists",
+        action="store_true",
+        help="Exit 0 without writing when the snapshot date already exists (for idempotent catch-up runs).",
+    )
     parser.add_argument("--csv", type=Path, default=REPO / "nifty500_universe.csv")
     parser.add_argument("--db", type=Path, default=REPO / "data" / "universe_pit.db")
     args = parser.parse_args()
 
     tickers = load_universe_csv(args.csv)
     store = SqliteUniverseStore(args.db)
+    if args.skip_if_exists:
+        try:
+            already = store.latest_snapshot_date(args.snapshot_date) == args.snapshot_date
+        except DataFetchError:
+            already = False  # store empty or no snapshot at/before this date
+        if already:
+            print(f"Snapshot {args.snapshot_date.isoformat()} already recorded in {args.db} — skipping.")
+            return 0
     store.record_snapshot(args.snapshot_date, tickers, replace=args.replace)
     print(f"Recorded {len(tickers)} tickers as universe snapshot {args.snapshot_date.isoformat()} in {args.db}")
     return 0

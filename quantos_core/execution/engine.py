@@ -86,25 +86,52 @@ class ExecutionEngine:
             },
         )
 
+    def _record_or_log(self, order: LimitOrder, outcome: str, broker_order_id: str | None, detail: str) -> None:
+        """Journal the attempt; a journal-write failure must never mask
+        what actually happened at the broker. Once an order has been
+        placed (or definitively blocked/failed), that truth outranks
+        journal completeness: a StorageError here would otherwise make a
+        PLACED live order look like it never happened, and a re-run
+        would place it again. The CRITICAL log line carries the full
+        evidence for manual reconciliation."""
+        try:
+            self._record(order, outcome, broker_order_id, detail)
+        except Exception as exc:
+            self._logger.critical(
+                "journal_write_failed",
+                extra={
+                    "data": {
+                        "ticker": order.ticker,
+                        "side": order.side.value,
+                        "quantity": order.quantity,
+                        "limit_price": order.limit_price,
+                        "outcome": outcome,
+                        "broker_order_id": broker_order_id,
+                        "detail": detail,
+                        "journal_error": str(exc),
+                    }
+                },
+            )
+
     def execute(self, order: LimitOrder) -> OrderReceipt:
         """Gate -> place -> journal. Every path journals; every failure
         is a typed exception, never a silent skip."""
         try:
             self._gate.check(order)
         except Exception as exc:
-            self._record(order, "BLOCKED", None, str(exc))
+            self._record_or_log(order, "BLOCKED", None, str(exc))
             raise ExecutionBlockedError(f"Pre-trade gate blocked {order.side.value} {order.ticker}: {exc}") from exc
         try:
             receipt = self._broker.place_order(order)
         except BrokerError as exc:
-            self._record(order, "FAILED", None, str(exc))
+            self._record_or_log(order, "FAILED", None, str(exc))
             raise
         except Exception as exc:
             # A non-broker exception mid-placement (adapter bug, parse
             # crash) leaves the order state UNKNOWN. It must still hit
             # the journal -- "every path journals" has no exceptions --
             # then propagate for reconciliation.
-            self._record(order, "UNKNOWN", None, f"non-broker failure mid-placement: {exc}")
+            self._record_or_log(order, "UNKNOWN", None, f"non-broker failure mid-placement: {exc}")
             raise
-        self._record(order, receipt.status, receipt.broker_order_id, f"filled={receipt.filled_quantity}")
+        self._record_or_log(order, receipt.status, receipt.broker_order_id, f"filled={receipt.filled_quantity}")
         return receipt

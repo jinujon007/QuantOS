@@ -135,8 +135,21 @@ class ZerodhaKiteAdapter:
 
     def holdings(self) -> dict[str, int]:
         rows = self._get("/portfolio/holdings", "holdings")["data"]
-        return {str(row["tradingsymbol"]): int(row["quantity"]) for row in rows}
+        # "status": "success" with "data": null (or a non-list shape) is an
+        # ambiguous body, not an empty portfolio -- returning {} here would
+        # disguise a failure as "all positions gone" (same guard as Angel).
+        if not isinstance(rows, list):
+            raise BrokerConnectionError("Kite holdings returned success without a holdings list -- state ambiguous")
+        try:
+            return {str(row["tradingsymbol"]): int(row["quantity"]) for row in rows}
+        except (KeyError, TypeError) as exc:
+            raise BrokerConnectionError(f"Kite holdings row missing expected fields: {exc}") from exc
 
     def available_cash(self) -> float:
         data = self._get("/user/margins", "margins")["data"]
-        return float(data["equity"]["available"]["live_balance"])
+        try:
+            return float(data["equity"]["available"]["live_balance"])
+        except (KeyError, TypeError) as exc:
+            # Missing intermediate keys / data:null: ambiguous margin state
+            # must be a typed failure, never a raw KeyError (Angel parity).
+            raise BrokerConnectionError(f"Kite margins response missing expected fields: {exc}") from exc
