@@ -229,8 +229,10 @@ See `EXECUTION_PLAN.md` for the full 12-month roadmap and Phase gate criteria.
 | Decision | Reasoning |
 |----------|-----------|
 | Skip AutoHedge | Solana only — irrelevant for NSE |
-| Skip Kite Connect API for now | ₹2,000/month = 20% overhead on ₹10K capital |
-| Angel One Smart API when automating | Free, full-featured |
+| ~~Skip Kite Connect API for now~~ **SUPERSEDED 2026-07-14** | Kite Personal order APIs free since Apr 2025; only the data tier costs ₹500/mo (we don't need it — own EOD cache) |
+| ~~Angel One Smart API when automating~~ **RETIRED 2026-07-14** | Rationale died: Angel delivery now min ₹5/order (Nov 2025) vs Zerodha ₹0; SDK 17 months stale. **New: Zerodha Kite Personal primary, Fyers backup.** See `docs/03_research/(AI) India Execution Systems - Verified Landscape - 2026-07-14.md` |
+| Execution engine = limit-orders only | SEBI/NSE algo rules prohibit plain market orders for API flow (in force 1 Apr 2026); Phase 6 design constraint |
+| OpenAlgo = REFERENCE, never in order path | Verified real (34 brokers, live Zerodha/Angel code) but 2,400-file monolith, CI covers 5/69 test files, daily UI login; our need = ~20 REST calls/week = ~300-line native adapter |
 | CSV cache not parquet | pyarrow not installed in venv |
 | Paper capital = ₹1,00,000 not ₹10,000 | ₹10K gives noisy, unusable test results |
 | 10x in 3 months = no | 36% CAGR is the real edge. Lever is capital scaling, not timeline compression |

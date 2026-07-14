@@ -12,6 +12,15 @@ ai_generated: true
 
 # India Retail Algo Trading — Landscape Report
 
+> **⚠ Partially superseded 2026-07-14.** Sections 1 (broker APIs), 4
+> (platforms), and 5 (regulation) are superseded by the adversarially
+> verified `(AI) India Execution Systems - Verified Landscape -
+> 2026-07-14.md` — key flips: Angel One delivery no longer free (min
+> ₹5/order since Nov 2025), Kite Personal order APIs free since Apr
+> 2025, broker pick is now Zerodha primary / Fyers backup, OpenAlgo
+> evaluated → REFERENCE only, SEBI registration-free tier confirmed
+> from primary circulars (no Algo-ID needed at our order rate).
+
 **Scope:** Tech/infra, regulation, community, education, strategy patterns — what's real vs hype in Indian retail algo trading right now (2026).
 
 ---
