@@ -22,3 +22,8 @@ venv/
 # OS
 Thumbs.db
 .DS_Store
+
+# Build artifacts & local runtime state (regenerable; risk.db is operational state, not source)
+dashboard/index.html
+data/demo/
+data/risk.db

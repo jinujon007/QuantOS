@@ -55,6 +55,9 @@ select = ["E", "F", "I", "W"]
 # F841 (unused local variable) / F401 (unused import): real, harmless dead
 # code in the original scripts.
 "download_data.py" = ["F841"]
+# Console generator: long lines are single-attribute HTML strings inside
+# f-string blocks — wrapping them would splice whitespace into markup.
+"tools/build_dashboard.py" = ["E501"]
 "factor_attribution.py" = ["E402", "E501"]
 "momentum_backtest.py" = ["E402", "E501", "F841"]
 "paper_trader.py" = ["E402", "E501", "F841", "F401"]

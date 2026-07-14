@@ -48,13 +48,18 @@ modules:
 demo:
   entrypoint: tools/demo_pipeline.py
   broker_probe: tools/broker_connect_check.py
-  last_run: "2026-07-14"  # re-ran clean post-review: tick-aligned limits, unique run_id, journal appends, JSON events to file
+  last_run: "2026-07-14"  # runs the real Momentum v1.0 (WP-009), both regimes replayed
+
+operator_console:
+  generator: tools/build_dashboard.py   # --open to launch browser; output dashboard/index.html (git-ignored)
+  kill_switch_cli: tools/kill_switch.py # status | engage "reason" | release "reason" -> data/risk.db
+  adr: ADR-035  # static read-only precursor to Phase 9; browser-verified 2026-07-14
 
 last_completed_work_package:
-  id: WP-009
-  name: Strategy Platform (Momentum v1.0 port, parity-proven)
+  id: WP-010
+  name: Operator Console (UI) + Kill-Switch CLI
   date: "2026-07-14"
-  phase: 3
+  phase: ui-slice  # ADR-035
 
 ci_gates:
   legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
@@ -80,7 +85,7 @@ governing_documents:
 metrics:
   digital_readiness_score: "53/100"  # Independent Audit, 2026-07-13, institutional bar
   test_coverage_pct: 27              # quantos_core real code at 100% (117 stmts); repo total incl. legacy scripts
-  test_count: 174
+  test_count: 178
 
 open_items:
   risks_total: 5

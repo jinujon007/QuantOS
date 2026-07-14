@@ -1,6 +1,16 @@
 # Current Task
 
-**WP-009 — Strategy Platform: complete** (2026-07-14). Phase 3 open.
+**WP-010 — Operator Console (UI) + Kill-Switch CLI: complete**
+(2026-07-14, ADR-035). One-page static read-only console:
+`python tools/build_dashboard.py --open` — derived system state,
+freshness pills, equity chart from the determinism-pinned CSV, order
+blotter, broker readiness, runbook; page tints red site-wide when the
+kill switch is engaged. Kill-switch CLI (Constitution Part V):
+`python tools/kill_switch.py status|engage|release`. Browser-verified,
+zero console errors. OSS UI sweep (OpenAlgo/ai-hedge-fund/
+Vibe-Trading) recorded in ADR-035.
+
+Earlier same day — **WP-009 — Strategy Platform: complete**. Phase 3 open.
 The VALIDATED Momentum v1.0 now drives the pipeline behind the
 `Strategy` port: verbatim signal-math port (factors: momentum_12m1m,
 uptrend_series/is_uptrend), params externalized to

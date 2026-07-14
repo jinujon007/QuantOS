@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuantOS — Operator Console</title>
+<style>
+  :root{
+    --paper:#F2F4F3; --panel:#FBFCFB; --ink:#1A2320; --ink-soft:#4E5B56; --line:#D8DEDB;
+    --accent:#B35C0E; --accent-soft:#F4E3D2;
+    --good:#1E7A4E; --good-soft:#DFEEE6; --crit:#B3382E; --crit-soft:#F3E0DE;
+    --wait:#8A6D1F; --wait-soft:#F0E9D2;
+    --mono:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+    --serif:Charter,Georgia,"Times New Roman",serif;
+    --sans:"Segoe UI",-apple-system,system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#111816; --panel:#18201D; --ink:#E4EAE7; --ink-soft:#93A29B; --line:#2A342F;
+      --accent:#E08C3C; --accent-soft:#3A2A18;
+      --good:#4CC38A; --good-soft:#1A2A22; --crit:#E5695C; --crit-soft:#33201D;
+      --wait:#D4B356; --wait-soft:#2E2817;
+    }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55;margin:0;padding:0 20px 72px;font-size:15px}
+  main{max-width:1020px;margin:0 auto}
+  h1,h2{font-family:var(--serif);text-wrap:balance;line-height:1.15}
+  h1{font-size:clamp(24px,4vw,34px);margin:0}
+  h2{font-size:19px;margin:0 0 10px}
+  .modebar{background:var(--wait-soft);color:var(--wait);border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    text-align:center;padding:6px 10px;margin:0 -20px}
+  header{padding:30px 0 18px;border-bottom:2px solid var(--ink);
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}
+  .stamp{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-left:auto}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 11px;border-radius:2px;border:1px solid var(--line);background:var(--panel);white-space:nowrap}
+  .chip b{font-weight:600}
+  .chip.ok{border-color:var(--good);color:var(--good);background:var(--good-soft)}
+  .chip.crit{border-color:var(--crit);color:var(--crit);background:var(--crit-soft);font-weight:700}
+  section{margin-top:36px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:18px 20px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+  .tablewrap{overflow-x:auto}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:6px 12px;border-bottom:2px solid var(--ink)}
+  td{padding:6px 12px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+  td.r,th.r{text-align:right}
+  tr:last-child td{border-bottom:none}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:2px;font-weight:600}
+  .tag.fill{background:var(--good-soft);color:var(--good)}
+  .tag.wait{background:var(--wait-soft);color:var(--wait)}
+  .tag.block{background:var(--crit-soft);color:var(--crit)}
+  .proof{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px}
+  .cell{border:1px solid var(--line);background:var(--paper);border-radius:3px;padding:12px 14px}
+  .cell .v{font-family:var(--mono);font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+  .cell .k{font-size:12px;color:var(--ink-soft);margin-top:2px}
+  .mut{color:var(--ink-soft);font-size:13px;margin:10px 0 0;max-width:78ch}
+  code{font-family:var(--mono);font-size:.92em;background:var(--accent-soft);padding:1px 5px;border-radius:2px}
+  .chartwrap{position:relative;margin-top:6px}
+  svg{width:100%;height:auto;display:block}
+  .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);
+    font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:2px;white-space:nowrap;transform:translate(-50%,-130%)}
+  .runbook li{margin:6px 0;color:var(--ink-soft)}
+  .runbook b{color:var(--ink)}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:18px}
+  .cell.state .v{font-size:16px;letter-spacing:.04em}
+  .cell.state.ok .v{color:var(--good)} .cell.state.wait .v{color:var(--wait)} .cell.state.crit .v{color:var(--crit)}
+  .cell .v.fresh-ok{color:var(--good)} .cell .v.fresh-warn{color:var(--wait)} .cell .v.fresh-crit{color:var(--crit)}
+  body.halted .modebar{background:var(--crit-soft);color:var(--crit);font-weight:700}
+  body.halted header{border-bottom-color:var(--crit)}
+  ul{margin:8px 0 0;padding-left:20px}
+  footer{margin-top:52px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink-soft);font-size:12px;font-family:var(--mono)}
+  @media print{.modebar{display:none}}
+</style>
+</head>
+<body class="{{body_class}}">
+<div class="modebar" id="modebar">Paper mode — no live capital. Every order on this page is simulated.</div>
+<main>
+<header>
+  <h1>QuantOS <span style="color:var(--ink-soft);font-size:.6em">Operator Console</span></h1>
+  <span class="stamp">generated {{generated}} · refresh: <code>python tools/build_dashboard.py</code></span>
+</header>
+
+<div class="tiles">
+  {{tiles}}
+</div>
+
+<div class="chips">
+  {{chips}}
+</div>
+
+<section>
+  <p class="eyebrow">Paper account — the prospective-validation record</p>
+  <div class="panel">{{paper}}</div>
+</section>
+
+<section>
+  <p class="eyebrow">Backtest — Momentum v1.0, pinned reproducible run</p>
+  <div class="panel">{{chart}}</div>
+</section>
+
+<section class="grid2">
+  <div>
+    <p class="eyebrow">Strategy — v{{strategy_version}}, frozen</p>
+    <div class="panel">{{strategy}}</div>
+  </div>
+  <div>
+    <p class="eyebrow">Point-in-time universe</p>
+    <div class="panel">{{universe}}</div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Order journal — every attempt, append-only</p>
+  <div class="panel">{{journal}}</div>
+</section>
+
+<section class="grid2">
+  <div>
+    <p class="eyebrow">Broker connectivity</p>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Adapter</th><th>Status</th><th>Needs</th></tr></thead>
+        <tbody>
+          <tr><td>Paper</td><td><span class="tag fill">ACTIVE</span></td><td>—</td></tr>
+          <tr><td>Zerodha Kite</td><td><span class="tag wait">READY</span></td><td>API key + daily token</td></tr>
+          <tr><td>Angel One SmartAPI</td><td><span class="tag wait">READY</span></td><td>API key + TOTP</td></tr>
+        </tbody>
+      </table>
+      <p class="mut">Probe (read-only, places nothing): <code>python tools/broker_connect_check.py both</code>.
+      Go-live prerequisite: static IP whitelisted with the broker (SEBI, in force since Apr 2026).</p>
+    </div>
+  </div>
+  <div>
+    <p class="eyebrow">Operator runbook</p>
+    <div class="panel">
+      <ul class="runbook">
+        <li><b>Daily (after 15:30 IST):</b> <code>python paper_trader.py</code></li>
+        <li><b>Friday:</b> also <code>python tools/seed_universe_snapshot.py &lt;today&gt;</code></li>
+        <li><b>Emergency halt:</b> <code>python tools/kill_switch.py engage "reason"</code></li>
+        <li><b>Resume:</b> <code>python tools/kill_switch.py release "reason"</code></li>
+        <li><b>Full demo:</b> <code>python tools/demo_pipeline.py</code></li>
+        <li><b>Health gates:</b> <code>python -m pytest -m "not network" -q</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>QuantOS · read-only console (ADR-028: the one write control is the kill-switch CLI) ·
+regenerate anytime — this file is a build artifact, not state</footer>
+</main>
+
+<script>
+(function () {
+  // Halted mode-tint: the banner itself flips to the halt message.
+  if (document.body.classList.contains("halted")) {
+    document.getElementById("modebar").textContent = "TRADING HALTED — kill switch engaged. Release: python tools/kill_switch.py release \"reason\"";
+  }
+  // Freshness pills: age computed client-side from embedded dates,
+  // so a stale page shows its staleness honestly on every open.
+  document.querySelectorAll("[data-age-of]").forEach(function (node) {
+    const raw = node.getAttribute("data-age-of");
+    if (!raw) { node.textContent = "no data"; node.classList.add("fresh-crit"); return; }
+    const ageH = (Date.now() - new Date(raw + "T15:30:00+05:30").getTime()) / 3.6e6;
+    const days = Math.floor(ageH / 24);
+    node.textContent = ageH < 30 ? "fresh (today/yesterday)" : days + "d old (" + raw + ")";
+    const warn = +node.getAttribute("data-warn-hours"), crit = +node.getAttribute("data-crit-hours");
+    node.classList.add(ageH >= crit ? "fresh-crit" : ageH >= warn ? "fresh-warn" : "fresh-ok");
+  });
+})();
+(function () {
+  if (typeof EQUITY === "undefined" || !EQUITY.length) return;
+  const svg = document.getElementById("equity");
+  const tip = document.getElementById("tip");
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 900, H = 320, L = 74, R = 20, T = 16, B = 34;
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  const values = EQUITY.map((p) => p[1]);
+  const n = EQUITY.length;
+  const vMin = Math.min(...values), vMax = Math.max(...values);
+  const x = (i) => L + (i / (n - 1)) * (W - L - R);
+  const y = (v) => T + (1 - (v - vMin) / (vMax - vMin)) * (H - T - B);
+  const el = (tag, attrs) => {
+    const node = document.createElementNS(NS, tag);
+    for (const key in attrs) node.setAttribute(key, attrs[key]);
+    svg.appendChild(node);
+    return node;
+  };
+  const fmt = (v) => "₹" + Math.round(v).toLocaleString("en-IN");
+
+  // recessive grid: 4 horizontal ticks
+  for (let g = 0; g <= 3; g++) {
+    const v = vMin + (g / 3) * (vMax - vMin);
+    el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: css("--line"), "stroke-width": 1 });
+    const label = el("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: css("--ink-soft") });
+    label.textContent = fmt(v);
+    label.style.fontFamily = css("--mono");
+  }
+  // x ticks: January firsts
+  let lastYear = "";
+  EQUITY.forEach((p, i) => {
+    const year = p[0].slice(0, 4);
+    if (year !== lastYear) {
+      lastYear = year;
+      const label = el("text", { x: x(i), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: css("--ink-soft") });
+      label.textContent = year;
+      label.style.fontFamily = css("--mono");
+    }
+  });
+
+  const line = EQUITY.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
+  el("path", { d: line + ` L ${x(n - 1)} ${H - B} L ${L} ${H - B} Z`, fill: css("--accent"), opacity: 0.09 });
+  el("path", { d: line, fill: "none", stroke: css("--accent"), "stroke-width": 2, "stroke-linejoin": "round" });
+
+  // emphasized endpoint + direct label
+  el("circle", { cx: x(n - 1), cy: y(values[n - 1]), r: 4, fill: css("--accent") });
+  const end = el("text", { x: x(n - 1) - 8, y: y(values[n - 1]) - 10, "text-anchor": "end", "font-size": 12, "font-weight": 700, fill: css("--ink") });
+  end.textContent = fmt(values[n - 1]);
+  end.style.fontFamily = css("--mono");
+
+  // crosshair + tooltip
+  const cross = el("line", { y1: T, y2: H - B, stroke: css("--ink-soft"), "stroke-width": 1, "stroke-dasharray": "3 3", visibility: "hidden" });
+  const dot = el("circle", { r: 4, fill: css("--accent"), stroke: css("--paper"), "stroke-width": 2, visibility: "hidden" });
+  svg.addEventListener("mousemove", (event) => {
+    const box = svg.getBoundingClientRect();
+    const mx = ((event.clientX - box.left) / box.width) * W;
+    const i = Math.max(0, Math.min(n - 1, Math.round(((mx - L) / (W - L - R)) * (n - 1))));
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(values[i])); dot.setAttribute("visibility", "visible");
+    tip.hidden = false;
+    tip.style.left = (x(i) / W) * 100 + "%";
+    tip.style.top = (y(values[i]) / H) * 100 + "%";
+    tip.textContent = EQUITY[i][0] + "  " + fmt(values[i]);
+  });
+  svg.addEventListener("mouseleave", () => {
+    cross.setAttribute("visibility", "hidden");
+    dot.setAttribute("visibility", "hidden");
+    tip.hidden = true;
+  });
+})();
+</script>
+</body>
+</html>
