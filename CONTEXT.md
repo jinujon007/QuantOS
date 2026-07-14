@@ -247,10 +247,13 @@ See `EXECUTION_PLAN.md` for the full 12-month roadmap and Phase gate criteria.
 
 | Repo | Role in stack | Status |
 |------|--------------|--------|
-| tauricresearch/TradingAgents | LLM signal layer (later) | Not yet configured — needs API key |
-| HKUDS/Vibe-Trading | Core engine | Installed (vibe-trading-ai 0.1.9) — not yet configured with API key |
-| Fincept-Corporation/FinceptTerminal | Live execution (later) | Has Zerodha/Angel One native integration |
+| tauricresearch/TradingAgents | — | **REJECTED** (2026-07-13 Due Diligence: agentic core breaks determinism; ADR-020/030) |
+| HKUDS/Vibe-Trading | — | **REJECTED as dependency** (2026-07-14 addendum: LLM decision core, no Indian live brokers; pattern quarry only). vibe-trading-ai 0.1.9 still installed in venv — dead weight, candidate for removal |
+| virattt/ai-hedge-fund | — | **REJECTED** (2026-07-14 addendum: educational US-only LLM simulator, places no real orders) |
+| Fincept-Corporation/FinceptTerminal | Live execution (later) | Has Zerodha/Angel One native integration — re-evaluate at Phase 8 |
 | The-Swarm-Corporation/AutoHedge | — | Dropped |
+
+Full verdicts: `docs/01_audits/` (Due Diligence 2026-07-13 + Addendum 2026-07-14).
 
 ---
 
