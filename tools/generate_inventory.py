@@ -148,7 +148,10 @@ def main() -> None:
             by_dir: dict[str, int] = defaultdict(int)
             named = []
             for item in items:
-                parent = str(Path(item).parent)
+                # as_posix(): plain str() yields "data\cache" on Windows, so the
+                # startswith below never matched there and the committed file
+                # (itemized) could never equal a Linux CI regeneration (summarized).
+                parent = Path(item).parent.as_posix()
                 if parent.startswith("data/cache") and Path(item).suffix == ".csv":
                     by_dir[parent] += 1
                 else:
