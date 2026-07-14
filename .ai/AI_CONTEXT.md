@@ -117,10 +117,11 @@ Phase 0 complete. WP-000 (pre-Phase-1 repository reorganization) complete,
 `SqliteRepository[T]` (stdlib sqlite3, transactional, fail-closed reads,
 deterministic query ordering). No consumer wiring; no domain aggregates
 yet (Phase 4/6). Architectural import-boundary enforcement (Constitution
-Part II item 4, ADR-029) remains unmet, reserved as **WP-005**, Medium
-priority (TD-010). WP-004 (Structured Logging) complete, 2026-07-14:
-`quantos_core.utils` — JSON-lines logging (timestamp/level/module/
-event/run-id, sorted keys, exception capture), stdlib-only. **Phase 1's
-stated scope (config, storage, utils) is complete.** Next: WP-005,
-WP-006, or Phase 2 (Data Platform). See `CURRENT_TASK.md` for exact
+Part II item 4, ADR-029) is now met: WP-005 (Import Boundary
+Enforcement) complete, 2026-07-14 — ADR-032 matrix enforced by a
+stdlib-ast scanner in the CI-blocking suite; TD-010 closed. WP-004
+(Structured Logging) complete, 2026-07-14: `quantos_core.utils` —
+JSON-lines logging (timestamp/level/module/event/run-id, sorted keys,
+exception capture), stdlib-only. **Phase 1 is fully closed.** Next:
+Phase 2 (Data Platform) or WP-006. See `CURRENT_TASK.md` for exact
 scope and `PROJECT_STATE.yaml` for current metrics.
