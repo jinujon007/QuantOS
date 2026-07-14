@@ -1,13 +1,20 @@
 # Current Task
 
-**WP-008 — Execution Vertical Slice: complete** (2026-07-14, ADR-034).
-Demo runs end-to-end: `python tools/demo_pipeline.py` — PIT universe →
-cached prices → labeled demo rank → kill-switch-gated limit orders →
-paper fills → audit journal. Broker adapters #2 (Zerodha Kite, native)
-and #3 (Angel One SmartAPI, native) built and tested behind the same
-port as PaperBroker — awaiting operator API keys
-(`tools/broker_connect_check.py`). Broker choice deliberately open per
-operator (research recommends Zerodha primary; not yet ratified).
+**WP-009 — Strategy Platform: complete** (2026-07-14). Phase 3 open.
+The VALIDATED Momentum v1.0 now drives the pipeline behind the
+`Strategy` port: verbatim signal-math port (factors: momentum_12m1m,
+uptrend_series/is_uptrend), params externalized to
+`strategies_registry/momentum_v1.yaml` (ADR-015 — editing it restarts
+the validation clock), parity with the frozen script proven byte-equal
+on 6 real dates (`test_strategy_parity.py`). Demo replays both
+regimes: bear week → CASH stance, bull week → real top-10 through the
+gated engine. Freeze untouched; paper_trader.py remains system of
+record. New dep: pyyaml==6.0.3.
+
+Earlier: WP-008 (ADR-034 execution slice) — Paper/Zerodha/Angel
+adapters behind one port, kill switch, gated engine, demo tool;
+review-hardened same day (UNKNOWN-state taxonomy, tick grid, journal
+append). Broker choice deliberately open per operator.
 
 Earlier same day: WP-003 (storage), WP-004 (logging), WP-005 (import
 boundaries — TD-010 closed) → **Phase 1 fully closed**; WP-007 opened
@@ -35,10 +42,11 @@ frozen scripts; zero dependency changes.
 
 ## Next decision (not yet a task in progress)
 
-1. **Phase 2 continuation** — corporate-actions adjustment, data
-   quality validators, network fetch adapter behind `PriceProvider`.
-2. **WP-006 — Layered Configuration** (reserved; ride alongside
-   Phase 2 when a real consumer needs it).
+1. **Portfolio module slice** — target-weights → order diffing with
+   stop-loss carry; completes the weekly cycle against the engine.
+2. **Phase 2 continuation** — corporate actions, data quality
+   validators, network fetch adapter behind `PriceProvider`.
+3. **WP-006 — Layered Configuration** (reserved).
 
 India execution-landscape research (OpenAlgo vs native SmartAPI
 adapter, SEBI retail-algo compliance state, broker pick) ran

@@ -1,0 +1,18 @@
+# Momentum v1.0 — Nifty 500 weekly 12M-1M momentum (the validated strategy)
+#
+# SINGLE SOURCE OF TRUTH for these parameters (ADR-015). These values
+# mirror the Prospective-Validation-frozen constants in
+# momentum_backtest.py; tests/quantos_core/test_strategy_parity.py
+# pins the correspondence. Changing ANY value below is a new strategy
+# version and RESTARTS the 13-week validation clock (Constitution
+# Part II, Versioning) — do not edit casually.
+
+strategy: nifty500-weekly-momentum
+version: "1.0"
+params:
+  top_n: 10
+  lookback_months: 12
+  skip_months: 1
+  min_observations: 75   # == MIN_TRADING_DAYS // 2 in the frozen script
+  stop_loss_pct: 0.08
+  trend_ma_days: 100

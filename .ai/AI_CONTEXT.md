@@ -136,7 +136,13 @@ rule), persisted kill switch + KillSwitchGate (fail-closed, zero
 exceptions), gated ExecutionEngine with full order journal, and the
 end-to-end demo `tools/demo_pipeline.py` (ran clean). Broker choice
 open per operator: research recommends Zerodha primary/Fyers backup,
-Angel retained until ratified. Next: Phase 2 continuation (corporate
-actions, quality validators, fetch adapter), Phase 3 strategy port,
-or WP-006. See `CURRENT_TASK.md` for exact scope and
-`PROJECT_STATE.yaml` for current metrics.
+Angel retained until ratified. WP-009 (Strategy Platform) complete,
+2026-07-14 — Phase 3 open: the validated Momentum v1.0 behind the
+`Strategy` port, verbatim signal-math port with byte-equal parity
+proven against the frozen script on 6 real dates; params externalized
+to `strategies_registry/momentum_v1.yaml` (ADR-015; editing restarts
+the validation clock); pyyaml==6.0.3 added. Freeze untouched;
+paper_trader.py remains system of record until Phase 6. Next:
+portfolio slice (weights→orders diffing with stop-loss carry),
+Phase 2 continuation, or WP-006. See `CURRENT_TASK.md` for exact
+scope and `PROJECT_STATE.yaml` for current metrics.

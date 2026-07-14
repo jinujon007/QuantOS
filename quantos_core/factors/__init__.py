@@ -1,9 +1,16 @@
-"""Reusable, pure factor/feature computation -- momentum, quality, value, low-
-volatility, size.
+"""Pure factor math: signal transforms with zero I/O, trivially
+unit-testable (Blueprint module 03: "deliberately dependency-free").
 
-Empty by design (QuantOS Constitution, Part IX / ADR-031). Phase 0 repository
-organization only -- no implementation yet. Populated starting Phase 1, per the
-frozen QuantOS Target Architecture Blueprint's module specification, strangler-
-fig migration (ADR-003), never a rewrite of the frozen scripts at the repo
-root.
+WP-009 implements the two factors the validated strategy needs, both
+VERBATIM ports from the frozen scripts (ADR-003) with parity pinned by
+tests: 12M-1M momentum and the trend-regime filter.
 """
+
+from quantos_core.factors.momentum import momentum_12m1m
+from quantos_core.factors.regime import is_uptrend, uptrend_series
+
+__all__ = [
+    "is_uptrend",
+    "momentum_12m1m",
+    "uptrend_series",
+]

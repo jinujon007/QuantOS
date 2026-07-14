@@ -1,23 +1,27 @@
-"""QuantOS end-to-end demo (WP-008, ADR-034).
+"""QuantOS end-to-end demo (WP-008/WP-009).
 
     .\\venv\\Scripts\\python.exe tools\\demo_pipeline.py
 
-Runs the real machinery end to end with ZERO network and ZERO capital
-risk: point-in-time universe -> cached prices -> momentum ranking ->
+Runs the REAL system end to end with ZERO network and ZERO capital
+risk: point-in-time universe -> cached prices -> the validated
+Momentum v1.0 strategy (parameters from strategies_registry, signal
+math proven byte-equal to the frozen script by the parity suite) ->
 limit orders -> pre-trade risk gate -> paper broker fills -> persisted
-order journal -> kill-switch drill. Everything printed is produced by
-the same quantos_core modules live trading will use; only the broker
-adapter is the paper one (ADR-010).
+order journal -> kill-switch drill. Only the broker adapter is the
+paper one (ADR-010); everything else is what live trading will use.
 
-The ranking below is a DEMO approximation of 12M-1M momentum for
-display purposes ONLY. The validated strategy remains frozen in
-paper_trader.py (Prospective Validation rule) -- demo output is never
-a trading signal.
+Two historical dates are replayed to show both behaviors: a bear week
+(regime filter refuses to trade) and a bull week (top-10 rebalance).
+Signals are historical replays over the frozen 2019-2024 cache -- not
+current trading advice; the live paper record stays with
+paper_trader.py until Phase 6 swaps execution paths.
 """
 
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
+
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -25,14 +29,17 @@ from quantos_core.brokers import LimitOrder, OrderSide, PaperBrokerAdapter, to_t
 from quantos_core.config import load_config  # noqa: E402
 from quantos_core.data import CsvCachePriceProvider, SqliteUniverseStore  # noqa: E402
 from quantos_core.execution import ExecutionBlockedError, ExecutionEngine, OrderJournalEntry  # noqa: E402
+from quantos_core.factors import is_uptrend, uptrend_series  # noqa: E402
 from quantos_core.risk import KillSwitch, KillSwitchGate, KillSwitchState  # noqa: E402
 from quantos_core.storage import SqliteRepository  # noqa: E402
+from quantos_core.strategies import MomentumV1, StrategyContext, load_momentum_params  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 DEMO_DIR = REPO / "data" / "demo"
 CAPITAL = 100_000.0
-TOP_N = 10
-AS_OF = date(2024, 12, 27)  # inside the cached 2019-2024 window -- fully offline
+BEAR_DATE = date(2024, 12, 27)  # regime filter active -- strategy holds cash
+BULL_DATE = date(2024, 9, 27)  # uptrend -- strategy rebalances
+AS_OF = BULL_DATE  # orders are placed for the bull replay
 
 
 def banner(text: str) -> None:
@@ -60,9 +67,8 @@ def main() -> int:
 
     banner("3. PRICES -- fail-closed cache reader (WP-007)")
     prices = CsvCachePriceProvider(REPO / "data" / "cache")
-    lookback_start = AS_OF - timedelta(days=400)
-    served: dict[str, float] = {}
-    momentum: dict[str, float] = {}
+    lookback_start = AS_OF - timedelta(days=440)
+    columns: dict[str, "pd.Series[float]"] = {}
     skipped = 0
     for ticker in universe:
         try:
@@ -70,26 +76,41 @@ def main() -> int:
         except Exception:
             skipped += 1  # ticker not in the 2019-2024 cache (new listing etc.) -- visible, counted
             continue
-        series = frame[str(ticker)].dropna()
-        if len(series) < 260:
-            skipped += 1
-            continue
-        latest = float(series.iloc[-1])
-        one_month_ago = float(series.iloc[-22])
-        twelve_months_ago = float(series.iloc[0])
-        served[str(ticker)] = latest
-        momentum[str(ticker)] = (one_month_ago / twelve_months_ago) - 1.0
-    print(f"  {len(served)} tickers with full history served; {skipped} skipped (counted, not silent)")
+        columns[str(ticker).removesuffix(".NS")] = frame[str(ticker)]
+    matrix = pd.DataFrame(columns)
+    print(f"  {len(columns)} tickers served; {skipped} skipped (counted, not silent)")
 
-    banner(f"4. DEMO MOMENTUM RANK (12M-1M approximation) as of {AS_OF.isoformat()}")
-    top = sorted(momentum.items(), key=lambda kv: (-kv[1], kv[0]))[:TOP_N]
-    if not top:
-        print("  FAIL-CLOSED: zero tickers ranked (price cache missing?) -- nothing to trade, stopping.")
+    banner("4. THE VALIDATED STRATEGY -- Momentum v1.0 (WP-009)")
+    params = load_momentum_params(REPO / "strategies_registry" / "momentum_v1.yaml")
+    strategy = MomentumV1(params)
+    print(f"  {strategy.metadata().name} v{params.version} -- params from strategies_registry (ADR-015)")
+    print("  Signal math proven byte-equal to the frozen script (test_strategy_parity.py, 6 dates)")
+
+    index_close = pd.read_csv(REPO / "data" / "cache_index" / "NSEI.csv", index_col=0, parse_dates=True)[
+        "Close"
+    ].astype(float)
+    regime = uptrend_series(index_close, params.trend_ma_days)
+
+    bear_up = is_uptrend(regime, pd.Timestamp(BEAR_DATE))
+    bear_target = strategy.generate_signals(
+        StrategyContext(as_of=pd.Timestamp(BEAR_DATE), prices=matrix, market_uptrend=bear_up)
+    )
+    print(f"\n  Replay {BEAR_DATE.isoformat()} -- Nifty below its {params.trend_ma_days}-day MA (uptrend={bear_up}):")
+    print(f"    stance = {bear_target.stance.upper()}  ->  liquidate everything, hold cash. No picks in a bear.")
+
+    bull_up = is_uptrend(regime, pd.Timestamp(BULL_DATE))
+    target = strategy.generate_signals(
+        StrategyContext(as_of=pd.Timestamp(BULL_DATE), prices=matrix, market_uptrend=bull_up)
+    )
+    print(f"\n  Replay {BULL_DATE.isoformat()} -- uptrend={bull_up}:  stance = {target.stance.upper()}")
+    if target.stance != "rebalance":
+        print("  FAIL-CLOSED: no rebalance signal on the bull replay -- stopping.")
         return 1
-    print("  DEMO ONLY -- validated strategy stays frozen in paper_trader.py")
-    for rank, (ticker, score) in enumerate(top, 1):
+    last_close = matrix.loc[: pd.Timestamp(BULL_DATE)].iloc[-1]
+    top = list(target.weights)
+    for rank, ticker in enumerate(top, 1):
         print(
-            f"  {rank:2d}. {ticker.removesuffix('.NS'):<12} momentum {score * 100:7.1f}%   last {served[ticker]:10.2f}"
+            f"  {rank:2d}. {ticker:<12} weight {target.weights[ticker] * 100:4.0f}%   close {last_close[ticker]:10.2f}"
         )
 
     banner("5. RISK -- persisted kill switch + pre-trade gate (ADR-009)")
@@ -98,8 +119,8 @@ def main() -> int:
     gate = KillSwitchGate(kill_switch)
     print(f"  kill switch engaged: {kill_switch.is_engaged()}  (state survives restarts; unreadable = BLOCK)")
 
-    banner("6. EXECUTION -- limit orders through the gated engine (paper broker)")
-    market = {t.removesuffix(".NS"): p for t, p in served.items()}
+    banner(f"6. EXECUTION -- the strategy's {BULL_DATE.isoformat()} weights through the gated engine (paper broker)")
+    market = {symbol: float(last_close[symbol]) for symbol in top}
     broker = PaperBrokerAdapter(market, cash=CAPITAL)
     journal: SqliteRepository[OrderJournalEntry] = SqliteRepository(
         DEMO_DIR / "journal.db", "order_journal", OrderJournalEntry
@@ -110,13 +131,12 @@ def main() -> int:
     from quantos_core.utils import get_logger  # noqa: E402
 
     get_logger("execution", run_id=run_id, stream=log_stream)
-    per_stock = CAPITAL / TOP_N
-    for ticker, _ in top:
-        symbol = ticker.removesuffix(".NS")
+    for symbol in top:
         price = market[symbol]
-        quantity = int(per_stock // price)
+        slot = CAPITAL * target.weights[symbol]
+        quantity = int(slot // price)
         if quantity == 0:
-            print(f"  {symbol:<12} SKIPPED -- one share ({price:.2f}) exceeds the {per_stock:.0f} slot")
+            print(f"  {symbol:<12} SKIPPED -- one share ({price:.2f}) exceeds the {slot:.0f} slot")
             continue
         # 0.2% above market, rounded DOWN to the NSE 0.05 tick grid --
         # an off-grid limit price is an exchange rejection, not a fill.
@@ -130,7 +150,7 @@ def main() -> int:
 
     banner("7. KILL-SWITCH DRILL -- the no-bypass rule, live")
     kill_switch.engage("operator demo drill")
-    drill = LimitOrder(ticker=top[0][0].removesuffix(".NS"), side=OrderSide.BUY, quantity=1, limit_price=1.0)
+    drill = LimitOrder(ticker=top[0], side=OrderSide.BUY, quantity=1, limit_price=1.0)
     try:
         engine.execute(drill)
         print("  !! ORDER WENT THROUGH -- THIS WOULD BE A BUG")

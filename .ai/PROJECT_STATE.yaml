@@ -39,6 +39,11 @@ modules:
     status: partial  # WP-008: persisted kill switch + KillSwitchGate; full Part V control table = Phase 4
   execution:
     status: partial  # WP-008: gated engine + order journal; lifecycle/reconciliation/slippage = Phase 6
+  factors:
+    status: partial  # WP-009: momentum_12m1m + regime, verbatim ports, parity-proven
+  strategies:
+    status: partial  # WP-009: Strategy port + MomentumV1 + registry loader; stop-loss carry = portfolio module
+    registry: strategies_registry/momentum_v1.yaml  # editing restarts the validation clock
 
 demo:
   entrypoint: tools/demo_pipeline.py
@@ -46,10 +51,10 @@ demo:
   last_run: "2026-07-14"  # re-ran clean post-review: tick-aligned limits, unique run_id, journal appends, JSON events to file
 
 last_completed_work_package:
-  id: WP-008
-  name: Execution Vertical Slice (demo)
+  id: WP-009
+  name: Strategy Platform (Momentum v1.0 port, parity-proven)
   date: "2026-07-14"
-  phase: demo-slice  # ADR-034; slices of phases 4/6/8
+  phase: 3
 
 ci_gates:
   legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
@@ -75,7 +80,7 @@ governing_documents:
 metrics:
   digital_readiness_score: "53/100"  # Independent Audit, 2026-07-13, institutional bar
   test_coverage_pct: 27              # quantos_core real code at 100% (117 stmts); repo total incl. legacy scripts
-  test_count: 142
+  test_count: 174
 
 open_items:
   risks_total: 5
