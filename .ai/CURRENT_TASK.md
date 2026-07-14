@@ -50,13 +50,19 @@ duplicated). Event convention: message = event name, event data via
 coverage (117 stmts, 22 strict-mypy files). Zero change to the six
 frozen scripts; zero dependency changes.
 
-## Next decision (not yet a task in progress)
+## Next work (operator-ratified, interview 2026-07-14)
 
-1. **Portfolio module slice** — target-weights → order diffing with
+**Automation loop**, in order:
+1. **WP-011 — Portfolio module** — target-weights → order diffing with
    stop-loss carry; completes the weekly cycle against the engine.
-2. **Phase 2 continuation** — corporate actions, data quality
-   validators, network fetch adapter behind `PriceProvider`.
-3. **WP-006 — Layered Configuration** (reserved).
+2. **WP-012 — run_cycle wiring** (ADR-010) — weekly cycle through the
+   new pipeline, parity period alongside paper_trader.py.
+3. Scheduler hardening (daily task registered 2026-07-14:
+   "QuantOS Daily Paper Run", weekdays 15:40, tools/daily_run.ps1).
+
+Then: Phase 2 finish (corporate actions, fetch adapter), Phase 4 risk
+table, TD-013 live hardening. Operator to create Zerodha API key this
+week; capital plan ₹3L for Oct go-live if the Sept 9 gate passes.
 
 India execution-landscape research (OpenAlgo vs native SmartAPI
 adapter, SEBI retail-algo compliance state, broker pick) ran

@@ -232,6 +232,7 @@ See `EXECUTION_PLAN.md` for the full 12-month roadmap and Phase gate criteria.
 | ~~Skip Kite Connect API for now~~ **SUPERSEDED 2026-07-14** | Kite Personal order APIs free since Apr 2025; only the data tier costs ₹500/mo (we don't need it — own EOD cache) |
 | ~~Angel One Smart API when automating~~ **RETIRED 2026-07-14** | Rationale died: Angel delivery now min ₹5/order (Nov 2025) vs Zerodha ₹0; SDK 17 months stale. **New: Zerodha Kite Personal primary, Fyers backup.** See `docs/03_research/(AI) India Execution Systems - Verified Landscape - 2026-07-14.md` |
 | Execution engine = limit-orders only | SEBI/NSE algo rules prohibit plain market orders for API flow (in force 1 Apr 2026); Phase 6 design constraint |
+| **Operator interview 2026-07-14** — 4 decisions | (1) Zerodha personal API key to be created THIS WEEK (developers.kite.trade, free) and verified via read-only `tools/broker_connect_check.py`; Angel optional later. (2) Daily 15:40 run automated via Windows Task Scheduler ("QuantOS Daily Paper Run" → `tools/daily_run.ps1`: paper_trader + Friday universe snapshot + console rebuild, logged to `data/daily_run.log`). (3) Go-live capital: **₹3L** (recommended tier), Oct 2026 if Sept 9 gate passes. (4) Build priority: automation loop (portfolio module → run_cycle → scheduler hardening). |
 | OpenAlgo = REFERENCE, never in order path | Verified real (34 brokers, live Zerodha/Angel code) but 2,400-file monolith, CI covers 5/69 test files, daily UI login; our need = ~20 REST calls/week = ~300-line native adapter |
 | CSV cache not parquet | pyarrow not installed in venv |
 | Paper capital = ₹1,00,000 not ₹10,000 | ₹10K gives noisy, unusable test results |
@@ -254,6 +255,7 @@ See `EXECUTION_PLAN.md` for the full 12-month roadmap and Phase gate criteria.
 | virattt/ai-hedge-fund | — | **REJECTED** (2026-07-14 addendum: educational US-only LLM simulator, places no real orders) |
 | Fincept-Corporation/FinceptTerminal | Live execution (later) | Has Zerodha/Angel One native integration — re-evaluate at Phase 8 |
 | The-Swarm-Corporation/AutoHedge | — | Dropped |
+| tensortrade-org/tensortrade | — | **REJECTED** (2026-07-14: zombie RL framework — dead 2022→sporadic revivals, last push Feb 2026; own README shows PPO agent loses to buy-and-hold at 0.1% commission (our DP cost structure worse); RL black-box core breaks determinism ADR-020/030; no broker layer, nothing India. Salvage: `docs/tutorials/05-advanced/` overfitting/walk-forward/commission docs = reading only, no code) |
 
 Full verdicts: `docs/01_audits/` (Due Diligence 2026-07-13 + Addendum 2026-07-14).
 
