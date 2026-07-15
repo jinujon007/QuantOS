@@ -41,6 +41,11 @@ function RunStep([string]$label, [string[]]$cmdArgs) {
 Log "=== daily run start ==="
 RunStep "paper_trader.py" @("paper_trader.py")
 
+# Shadow cycle (ADR-038): quantos_core's run_cycle beside the legacy
+# loop, own state in data\shadow\, read-only w.r.t. the record. A
+# divergence exits 1 -> FAILED here -> DEGRADED on the console tile.
+RunStep "shadow cycle" @("tools\run_paper_cycle.py")
+
 # Friday's PIT snapshot, with weekend catch-up: a missed Friday run fires
 # Sat/Sun via StartWhenAvailable and must still record Friday's membership.
 $dow = (Get-Date).DayOfWeek
@@ -52,5 +57,9 @@ if ($dow -in @("Friday", "Saturday", "Sunday")) {
     Log "FRIDAY: log this week's signals in data\journal.md (validation clock evidence)"
 }
 
-RunStep "console rebuild" @("tools\build_dashboard.py")
+# End marker BEFORE the console rebuild: the rebuild parses this log for
+# the last-run tile, and a block that hasn't ended yet would always render
+# as INCOMPLETE during its own run. A rebuild failure lands after the
+# marker and still surfaces (DEGRADED) on the next rebuild.
 Log "=== daily run end ==="
+RunStep "console rebuild" @("tools\build_dashboard.py")

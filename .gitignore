@@ -28,3 +28,4 @@ dashboard/index.html
 data/demo/
 data/risk.db
 data/daily_run.log
+data/shadow/

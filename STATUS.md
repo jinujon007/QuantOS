@@ -1,7 +1,7 @@
 # Status
 
-**Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009)
-**Last work package:** WP-011 — QuantOS Desktop (2026-07-14, ADR-036)
+**Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013)
+**Last work package:** WP-013 — paper.run_cycle + shadow cutover harness (2026-07-15, ADR-038)
 **Business phase (EXECUTION_PLAN.md vocabulary):** Prospective Validation — paper trading, 0/13 weekly rebalances logged
 
 ## What's done
@@ -29,14 +29,24 @@
 - WP-011: QuantOS Desktop — local FastAPI on 127.0.0.1:8742 + Edge app
   window; broker connect flows, dashboard, kill-switch UI (ADR-036).
 
+- WP-012 (2026-07-15, ADR-037): portfolio accounting core — immutable
+  `PortfolioState`, pure T+1 fill/queue transitions with the audit
+  invariants as spec, shared CostModel port (rates bit-identical to the
+  frozen cost script).
+- WP-013 (2026-07-15, ADR-038): `paper.run_cycle(as_of) -> CycleReport`
+  over injected snapshots + the shadow harness
+  (`tools/run_paper_cycle.py`, daily via `daily_run.ps1`) comparing the
+  new cycle's books to `data/paper_state.json` every day.
+
 ## In progress / next
 
 - Prospective validation: accumulate 13 clean weekly rebalances
-  (gate review 2026-09-09). `paper_trader.py` remains the running system
-  of record until WP-012/013 wire `MomentumV1` into the live cycle.
+  (gate review 2026-09-09). `paper_trader.py` remains the system of
+  record; cutover to `paper.run_cycle` after two consecutive clean
+  weekly rebalances match in shadow (first candidate: 2026-07-17).
 - WP-006 (layered configuration) — reserved, not built.
-- WP-012 portfolio module, WP-013 `run_cycle` — planned next per
-  operator interview 2026-07-14.
+- Phase 6 after cutover: engine-mediated paper fills, write-ahead
+  journaling (TD-013a), reconciliation.
 
 ## Tracking
 
