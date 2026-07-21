@@ -30,7 +30,7 @@ def equity_file(tmp_path, monkeypatch) -> Path:
     return path
 
 
-def test_snapshot_true_append_header_once(equity_file):
+def test_snapshot_true_append_header_once(equity_file) -> None:
     paper_trader.log_equity_snapshot("2026-07-21", 101_234.567, 5_000.123, 9)
     paper_trader.log_equity_snapshot("2026-07-22", 102_000.0, 5_000.12, 9, degraded=True)
 
@@ -43,7 +43,7 @@ def test_snapshot_true_append_header_once(equity_file):
     assert bool(frame.loc[1, "degraded"]) is True
 
 
-def test_force_rerun_appends_reader_keeps_last(equity_file):
+def test_force_rerun_appends_reader_keeps_last(equity_file) -> None:
     paper_trader.log_equity_snapshot("2026-07-21", 100.0, 100.0, 0)
     paper_trader.log_equity_snapshot("2026-07-21", 200.0, 200.0, 0)  # --force rerun same day
 
@@ -53,7 +53,7 @@ def test_force_rerun_appends_reader_keeps_last(equity_file):
     assert history.loc[0, "total_value"] == 200.0, "last write wins"
 
 
-def test_load_history_sorts_by_date(tmp_path):
+def test_load_history_sorts_by_date(tmp_path) -> None:
     path = tmp_path / "eq.csv"
     pd.DataFrame(
         {"date": ["2026-07-22", "2026-07-21"], "total_value": [110.0, 100.0], "cash": [0, 0], "positions": [1, 1]}
@@ -62,7 +62,7 @@ def test_load_history_sorts_by_date(tmp_path):
     assert list(history["date"]) == ["2026-07-21", "2026-07-22"]
 
 
-def test_sharpe_pinned_against_hand_computation():
+def test_sharpe_pinned_against_hand_computation() -> None:
     values = pd.Series([100.0, 102.0, 101.0, 104.0])
     returns = values.pct_change().dropna()
     expected = float(returns.mean()) / float(returns.std()) * math.sqrt(252)
@@ -74,25 +74,25 @@ def test_sharpe_pinned_against_hand_computation():
     assert metrics.max_drawdown == pytest.approx(101.0 / 102.0 - 1.0)
 
 
-def test_zero_volatility_sharpe_is_undefined_not_a_crash():
+def test_zero_volatility_sharpe_is_undefined_not_a_crash() -> None:
     metrics = compute_metrics(pd.Series([100.0, 100.0, 100.0]))
     assert metrics.sharpe is None
     assert metrics.total_return == 0.0
     assert metrics.max_drawdown == 0.0
 
 
-def test_monotonic_loss_has_negative_sharpe_and_full_series_drawdown():
+def test_monotonic_loss_has_negative_sharpe_and_full_series_drawdown() -> None:
     metrics = compute_metrics(pd.Series([100.0, 95.0, 90.0]))
     assert metrics.sharpe is not None and metrics.sharpe < 0
     assert metrics.max_drawdown == pytest.approx(0.90 - 1.0)
 
 
-def test_cli_missing_file_exits_1(tmp_path, capsys):
+def test_cli_missing_file_exits_1(tmp_path, capsys) -> None:
     assert main(["--file", str(tmp_path / "nope.csv")]) == 1
     assert "No equity history" in capsys.readouterr().out
 
 
-def test_cli_single_row_exits_1(tmp_path, capsys):
+def test_cli_single_row_exits_1(tmp_path, capsys) -> None:
     path = tmp_path / "eq.csv"
     pd.DataFrame({"date": ["2026-07-21"], "total_value": [100.0], "cash": [100.0], "positions": [0]}).to_csv(
         path, index=False
@@ -101,7 +101,7 @@ def test_cli_single_row_exits_1(tmp_path, capsys):
     assert "Insufficient history" in capsys.readouterr().out
 
 
-def test_cli_reports_metrics_and_degraded_warning(tmp_path, capsys):
+def test_cli_reports_metrics_and_degraded_warning(tmp_path, capsys) -> None:
     path = tmp_path / "eq.csv"
     pd.DataFrame(
         {
@@ -119,7 +119,7 @@ def test_cli_reports_metrics_and_degraded_warning(tmp_path, capsys):
     assert "WARNING: 1/3 rows are degraded" in out
 
 
-def test_cli_handles_history_without_degraded_column(tmp_path, capsys):
+def test_cli_handles_history_without_degraded_column(tmp_path, capsys) -> None:
     """Backward/forward tolerance: a hand-seeded history without the
     degraded column must still compute, not KeyError."""
     path = tmp_path / "eq.csv"

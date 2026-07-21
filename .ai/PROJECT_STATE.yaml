@@ -91,7 +91,7 @@ open_items:
   risks_total: 5
   risks_mitigated: 1
   tech_debt_total: 18
-  tech_debt_resolved: 6  # TD-007, TD-009..011, TD-016 (ADR-040), TD-015 (2026-07-21 venv rebuild from lockfile)
+  tech_debt_resolved: 7  # TD-007, TD-009..012, TD-015, TD-016 (TD-012 + TD-015 closed 2026-07-21 maintenance)
 
 repository:
   default_branch: main
@@ -99,6 +99,6 @@ repository:
   remote: https://github.com/jinujon007/QuantOS
   visibility: private
 
-modules_scaffolded_empty: 15  # quantos_core subpackages, zero logic (WP-000)
+modules_scaffolded_empty: 4  # analytics, live, monitoring, validation (init-only); recount 2026-07-21 (TD-012 fix)
 
 last_updated: "2026-07-21"
