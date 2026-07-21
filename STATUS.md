@@ -1,7 +1,7 @@
 # Status
 
 **Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013) · Phase 7 safety-net slice (WP-014)
-**Last work package:** WP-014 — operational safety net: alert + state backup + missed-run watchdog (2026-07-21, ADR-039)
+**Last work package:** WP-017 — daily paper-equity history capture + metrics tool (2026-07-21, ADR-042)
 **Business phase (EXECUTION_PLAN.md vocabulary):** Prospective Validation — paper trading, 0/13 weekly rebalances logged
 
 ## What's done
@@ -50,6 +50,12 @@
 - WP-016 (2026-07-21, ADR-041): Phase 4 slice — PositionLimitGate
   (single name ≤ 15% NAV, SELLs exempt, fail-closed) + CompositeGate;
   demo drills an oversized order to BLOCKED; 16 new tests (249 total).
+- WP-017 (2026-07-21, ADR-042): daily paper-equity history — every
+  completed run appends `date,total_value,cash,positions,degraded` to
+  `data/paper_equity_history.csv` (true append, last-write-wins on
+  `--force` reruns); `tools/paper_metrics.py` computes total return,
+  annualized Sharpe and max drawdown from it, making the Sept-9 gate's
+  "paper Sharpe > 1.0" computable. 10 new tests (259 total).
 
 ## In progress / next
 

@@ -34,6 +34,7 @@ $dest = Join-Path $backupRoot $stamp
 $files = @(
     "data\paper_state.json",
     "data\paper_trades.csv",
+    "data\paper_equity_history.csv",
     "data\universe_pit.db",
     "data\risk.db",
     "data\daily_run.log",

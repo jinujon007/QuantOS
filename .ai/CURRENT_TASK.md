@@ -1,9 +1,17 @@
 # Current Task
 
-**Latest session 2026-07-21 — due-diligence audit + WP-014/015/016:
+**Latest session 2026-07-21 — due-diligence audit + WP-014/015/016/017:
 complete.** Full log: `docs/00_governance/(AI) Program Log - 2026-07-21.md`.
 All on branch `docs/institutional-dd-2026-07-21` (PR #1, awaiting
 operator merge).
+
+- **WP-017 (ADR-042)**: daily paper-equity history — every completed
+  run appends `date,total_value,cash,positions,degraded` to
+  `data/paper_equity_history.csv` (true append; readers keep last row
+  per date on `--force` reruns); `tools/paper_metrics.py` reports
+  total return, annualized Sharpe, max drawdown (exit 1 = insufficient
+  history). Sept-9 "paper Sharpe > 1.0" now computable. Freeze-safe
+  (logging only, clock intact). 10 new tests → 259 total.
 
 - **Audit** (`docs/01_audits/(AI) QuantOS Institutional Due Diligence -
   2026-07-21.md`): 5.5/10 institutional readiness (concurs with DRS
@@ -28,11 +36,8 @@ PROJECT_STATE synchronized.
 
 ## Next work package (recommended)
 
-**WP-017 — daily paper-equity history capture** (freeze-safe append of
-date/value/cash/positions per run): makes the Sept-9 gate's
-"paper Sharpe > 1.0" computable — impossible today. Then TD-015 (venv
-rebuild from lockfile), TD-013 residue (Phase 6), ADR-022/023 revisit
-(before Phase 5).
+**WP-017 done.** Next: TD-015 (venv rebuild from lockfile), TD-013
+residue (Phase 6), ADR-022/023 revisit (before Phase 5).
 
 ## Operator queue (code cannot do these)
 

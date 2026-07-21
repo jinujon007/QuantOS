@@ -34,6 +34,7 @@ data/shadow/
 # and durability live in the WP-014 dated backups, not git (ADR-040)
 data/paper_state.json
 data/paper_trades.csv
+data/paper_equity_history.csv
 
 # AI-session scaffolding, not platform source (ADR-040)
 .claude/

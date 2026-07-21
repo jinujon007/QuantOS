@@ -56,10 +56,10 @@ operator_console:
   adr: ADR-035  # static read-only precursor to Phase 9; browser-verified 2026-07-14
 
 last_completed_work_package:
-  id: WP-014
-  name: Operational Safety Net (alert + backup + watchdog)
+  id: WP-017
+  name: Daily Paper-Equity History + Metrics (Sharpe computable)
   date: "2026-07-21"
-  phase: ops-slice  # ADR-039; WP-011/012/013 reports in Program Status Reports
+  phase: ops-slice  # ADR-042; WP-015 = ADR-040, WP-016 = ADR-041 (same day)
 
 ci_gates:
   legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
@@ -85,7 +85,7 @@ governing_documents:
 metrics:
   digital_readiness_score: "61/100"  # CONTEXT.md DRS re-score 2026-07-13; independent DD 2026-07-21 concurs
   test_coverage_pct: 27              # quantos_core real code at 100%; repo total incl. legacy scripts
-  test_count: 233                    # verified 2026-07-21 (offline suite)
+  test_count: 259                    # verified 2026-07-21 post-WP-017 (offline suite)
 
 open_items:
   risks_total: 5
