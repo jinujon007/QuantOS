@@ -37,6 +37,7 @@ INITIAL_CAPITAL = 100_000  # Virtual capital
 _DIR = Path(__file__).parent
 STATE_FILE = _DIR / "data/paper_state.json"
 LOG_FILE = _DIR / "data/paper_trades.csv"
+EQUITY_FILE = _DIR / "data/paper_equity_history.csv"
 (_DIR / "data").mkdir(exist_ok=True)
 
 
@@ -76,6 +77,23 @@ def log_trade(action: str, ticker: str, price: float, shares: float, reason: str
     # True append — the old read-concat-rewrite pattern rewrote the whole
     # audit trail on every trade, so one mid-write kill destroyed it all.
     pd.DataFrame([row]).to_csv(LOG_FILE, mode="a", header=not LOG_FILE.exists(), index=False)
+
+
+def log_equity_snapshot(day: str, total_value: float, cash: float, positions: int, degraded: bool = False) -> None:
+    """Append one end-of-day equity row (WP-017, ADR-042) — the series the
+    Sept-9 gate's "paper Sharpe > 1.0" is computed from (tools/paper_metrics.py).
+    Pure logging: reads nothing back, alters no signal, state, or trading
+    decision (CONTEXT.md freeze rule: permitted, clock intact). True append,
+    same audit-trail rule as log_trade — a --force rerun writes a second row
+    for the same date; readers keep the LAST row per date."""
+    row = {
+        "date": day,
+        "total_value": round(total_value, 2),
+        "cash": round(cash, 2),
+        "positions": positions,
+        "degraded": degraded,
+    }
+    pd.DataFrame([row]).to_csv(EQUITY_FILE, mode="a", header=not EQUITY_FILE.exists(), index=False)
 
 
 def _fetch_close_frame(tickers: list[str]) -> pd.DataFrame | None:
@@ -415,6 +433,10 @@ def run_daily_update(force: bool = False):
     state["last_updated"] = today
     state["portfolio_value"] = total_value
     save_state(state)
+    # Equity history AFTER state is durably saved: the row must describe a
+    # day that actually persisted. Degraded runs still record (flagged) —
+    # a gap would silently bias the Sharpe series toward healthy days.
+    log_equity_snapshot(today, total_value, cash, len(holdings), degraded=bool(degraded))
     if pending:
         print(f"\n  {len(pending)} order(s) queued — will fill at next session's open prices.")
     print(f"  State saved → {STATE_FILE}")

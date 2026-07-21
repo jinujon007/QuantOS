@@ -1,85 +1,98 @@
 # Current Task
 
-**WP-010 — Operator Console (UI) + Kill-Switch CLI: complete**
-(2026-07-14, ADR-035). One-page static read-only console:
-`python tools/build_dashboard.py --open` — derived system state,
-freshness pills, equity chart from the determinism-pinned CSV, order
-blotter, broker readiness, runbook; page tints red site-wide when the
-kill switch is engaged. Kill-switch CLI (Constitution Part V):
-`python tools/kill_switch.py status|engage|release`. Browser-verified,
-zero console errors. OSS UI sweep (OpenAlgo/ai-hedge-fund/
-Vibe-Trading) recorded in ADR-035.
+**Latest session 2026-07-22 — Phase 2 completed (WP-019/020/021,
+ADR-045).** Full log: `docs/00_governance/(AI) Program Log -
+2026-07-22.md`. Previous session (2026-07-21): DD audit +
+WP-014..018 — see `(AI) Program Log - 2026-07-21.md`. All on branch
+`docs/institutional-dd-2026-07-21` (PR #1, awaiting operator merge).
 
-Earlier same day — **WP-009 — Strategy Platform: complete**. Phase 3 open.
-The VALIDATED Momentum v1.0 now drives the pipeline behind the
-`Strategy` port: verbatim signal-math port (factors: momentum_12m1m,
-uptrend_series/is_uptrend), params externalized to
-`strategies_registry/momentum_v1.yaml` (ADR-015 — editing it restarts
-the validation clock), parity with the frozen script proven byte-equal
-on 6 real dates (`test_strategy_parity.py`). Demo replays both
-regimes: bear week → CASH stance, bull week → real top-10 through the
-gated engine. Freeze untouched; paper_trader.py remains system of
-record. New dep: pyyaml==6.0.3.
+## Phase 2 close-out (2026-07-22)
 
-Earlier: WP-008 (ADR-034 execution slice) — Paper/Zerodha/Angel
-adapters behind one port, kill switch, gated engine, demo tool;
-review-hardened same day (UNKNOWN-state taxonomy, tick grid, journal
-append). Broker choice deliberately open per operator.
+- **WP-019 (ADR-045)**: corporate-action adjustment from NSE's
+  official Bc records (PR bundle, same cookie-free archives host).
+  BONUS/FVSPLT/FVCONS computed exactly; dividends price-neutral;
+  rights/demergers deliberately halt via the quality band instead of
+  being guessed. First design (UDiFF prev-close ratio) **disproven
+  against the real archive** (HDFCBANK 1:1 bonus ex 2025-08-26
+  published raw) and replaced same session — recorded in ADR-045.
+- **WP-020 (ADR-045)**: `validate_close_frame` fail-closed quality
+  gate — exact XBOM calendar coverage, dense positive closes, ±35%
+  single-session band (tunable). `DataQualityError(DataFetchError)`.
+- **WP-021 (ADR-045)**: `BhavcopyPriceProvider` — adjusted, validated
+  closes from `data/bhavcopy/` + `data/nse_pr/` behind the frozen
+  `PriceProvider` port; archive gaps and uncomputable-action quality
+  failures name their cause. Two-file range-mode backfill in
+  `tools/fetch_bhavcopy.py`; archives cover 2025-06-02 → present
+  (~200 MB, gitignored, regenerable). Live-verified across the
+  HDFCBANK bonus. Adversarial review: 7 findings fixed + test-pinned (ADR-045 hardening section); known halt: TVSMOTOR NCRPS bonus ex 2025-08-25 (uncomputable, operator item). 341 tests.
+- **Remaining for Phase 6 cutover (named in ADR-045):** indices
+  (regime) adapter; shadow-harness quantification of the
+  price-return vs total-return divergence.
 
-Earlier same day: WP-003 (storage), WP-004 (logging), WP-005 (import
-boundaries — TD-010 closed) → **Phase 1 fully closed**; WP-007 opened
-Phase 2 (PIT universe store, first snapshot 2026-07-14). No work
-package currently open.
+- **WP-017 (ADR-042)**: daily paper-equity history — every completed
+  run appends `date,total_value,cash,positions,degraded` to
+  `data/paper_equity_history.csv` (true append; readers keep last row
+  per date on `--force` reruns); `tools/paper_metrics.py` reports
+  total return, annualized Sharpe, max drawdown (exit 1 = insufficient
+  history). Sept-9 "paper Sharpe > 1.0" now computable. Freeze-safe
+  (logging only, clock intact). 10 new tests → 259 total.
 
-WP-007 delivered (ADR-033): segregated `UniverseProvider`/
-`PriceProvider` ports, `DataFetchError`, `SqliteUniverseStore` (PIT
-membership snapshots — F1/F9 structural fix going forward; first real
-snapshot 2026-07-14, 504 tickers, committed as `data/universe_pit.db`),
-`CsvCachePriceProvider` (fail-closed reader over the audited cache),
-`tools/seed_universe_snapshot.py`. **Operational: seed a fresh
-snapshot every Friday** alongside the paper-trader run.
+- **Audit** (`docs/01_audits/(AI) QuantOS Institutional Due Diligence -
+  2026-07-21.md`): 5.5/10 institutional readiness (concurs with DRS
+  61/100); first real rebalance verified (Fri 07-17 signal → Mon 07-20
+  T+1 fills, 9 positions, SYRMA dropped = TD-017); shadow books MATCH
+  daily; SEBI ≤10 orders/sec carve-out simplifies R-001 (Zerodha
+  rewrite needed); ADR-022/023 verified stale (revisit before
+  Phase 5); yfinance quarantine + bhavcopy-primary recommended.
+- **WP-014 (ADR-039)**: alert (`QUANTOS_ALERT_URL`) + daily state
+  backup (`QUANTOS_BACKUP_DIR`, default `D:\QuantOS_Backups`) +
+  "QuantOS Daily Watchdog" task (registered, weekdays 16:30).
+- **WP-015 (ADR-040)**: TD-016 closed — `paper_state.json` untracked;
+  backups are the history; tree clean; 07-17 PIT snapshot committed.
+- **WP-016 (ADR-041)**: `PositionLimitGate` (≤15% NAV/name, SELLs
+  exempt, fail-closed) + `CompositeGate` behind the WP-008 seam; demo
+  drills oversized order → BLOCKED; paper cycle deliberately un-gated
+  until Phase 6 cutover.
 
-## What WP-004 delivered
+**Gates at close:** 249 tests / ruff / format / mypy --strict /
+determinism 3× / boundaries — all green. Registers + STATUS +
+PROJECT_STATE synchronized.
 
-`quantos_core.utils` — `JsonLineFormatter` (one JSON object per line,
-sorted keys, `default=str` fallback, exception capture) and
-`get_logger(module, run_id, stream, level)` (run-id stamped on every
-record via filter, `propagate=False`, handlers reconfigured never
-duplicated). Event convention: message = event name, event data via
-`extra={"data": {...}}`. 9 tests; quantos_core remains at 100%
-coverage (117 stmts, 22 strict-mypy files). Zero change to the six
-frozen scripts; zero dependency changes.
+## Next work package (recommended)
 
-## Latest: WP-011 — QuantOS Desktop: complete (2026-07-14, ADR-036)
+**Phase 2 is code-complete** (accepted limits: no pre-2026 PIT
+universe history; price-return series; indices adapter deferred to
+Phase 6 cutover prerequisites). Recommended next: Phase 3
+continuation (migrate the next strategies from the sibling suite onto
+the `Strategy` port) or Phase 4 risk-engine expansion (sector
+exposure gate, drawdown monitor per Constitution Part V). WP-006
+(layered configuration) remains reserved. Remaining open debt is
+phase-gated (TD-013 Phase 6, TD-014/017 Momentum v1.1 boundary,
+TD-018 supersession at cutover).
 
-Local app at 127.0.0.1:8742 (`python tools/desktop_app.py`, Desktop
-shortcut via tools/create_desktop_shortcut.ps1): Overview/Brokers/
-Orders/Strategy/System. Broker connect flows (Zerodha request-token
-exchange, Angel TOTP) verified read-only; credentials in-memory only.
-Kill switch operable from the UI (the one write control), drilled live
-UI↔CLI. Shared read models in api/collectors.py feed both the app and
-the static console. fastapi/uvicorn now pinned deps.
+## Operator queue (code cannot do these)
 
-## Next work (operator-ratified, interview 2026-07-14)
+1. SEBI/Zerodha checklist — personal Kite key, static IP, Strategy-ID
+   + simulation confirmation, ≤10 orders/sec bucket in writing.
+2. Set `QUANTOS_ALERT_URL` + subscribe (alerts currently log SKIPPED).
+3. Point `QUANTOS_BACKUP_DIR` off-machine (optional, recommended).
+4. Cutover decision after Fri 2026-07-25 shadow match (2nd clean
+   weekly candidate).
+5. Review + merge PR #1.
 
-**Automation loop**, in order:
-1. **WP-012 — Portfolio module** — target-weights → order diffing with
-   stop-loss carry; completes the weekly cycle against the engine.
-2. **WP-013 — run_cycle wiring** (ADR-010) — weekly cycle through the
-   new pipeline, parity period alongside paper_trader.py.
-3. Scheduler hardening (daily task registered 2026-07-14:
-   "QuantOS Daily Paper Run", weekdays 15:40, tools/daily_run.ps1 —
-   live paper trading runs unattended from 2026-07-15).
+## Compressed history
 
-Then: Phase 2 finish (corporate actions, fetch adapter), Phase 4 risk
-table, TD-013 live hardening. Operator to create Zerodha API key this
-week; capital plan ₹3L for Oct go-live if the Sept 9 gate passes.
-
-India execution-landscape research (OpenAlgo vs native SmartAPI
-adapter, SEBI retail-algo compliance state, broker pick) ran
-2026-07-14 — see `docs/03_research/` for the report; it feeds the
-Phase 8 SEBI checklist and the Phase 6/8 BrokerAdapter decisions.
+WP-000..005 Phase 1 closed (typing, config, storage, logging, import
+matrix) · WP-007 Phase 2 opened (PIT store, fail-closed prices) ·
+WP-008 execution slice + 3 broker adapters + kill switch (ADR-034) ·
+WP-009 Momentum v1.0 behind Strategy port, byte-parity (Phase 3) ·
+WP-010 console + kill-switch CLI (ADR-035) · WP-011 desktop app
+(ADR-036) · WP-012 portfolio accounting + CostModel (ADR-037) ·
+WP-013 paper.run_cycle + shadow cutover harness (ADR-038) · daily
+task "QuantOS Daily Paper Run" weekdays 15:40 since 2026-07-15.
 
 ## Out of scope for this document
 
-Phase 2+ specifications. See `AI_CONTEXT.md` for the frozen roadmap.
+Phase specifications — see `AI_CONTEXT.md` + Constitution. Frozen
+strategy list — see CONTEXT.md Prospective Validation rule (0 touched
+this session; clock intact, ~1/13 weeks).

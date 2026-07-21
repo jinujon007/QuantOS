@@ -1,7 +1,7 @@
 # Status
 
-**Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013)
-**Last work package:** WP-013 — paper.run_cycle + shadow cutover harness (2026-07-15, ADR-038)
+**Engineering phase:** Phase 1 closed (WP-005) · **Phase 2 code-complete (WP-021)** · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013) · Phase 7 safety-net slice (WP-014)
+**Last work package:** WP-019/020/021 — official-record corporate actions, fail-closed quality gate, bhavcopy-backed PriceProvider (2026-07-22, ADR-045)
 **Business phase (EXECUTION_PLAN.md vocabulary):** Prospective Validation — paper trading, 0/13 weekly rebalances logged
 
 ## What's done
@@ -37,6 +37,50 @@
   over injected snapshots + the shadow harness
   (`tools/run_paper_cycle.py`, daily via `daily_run.ps1`) comparing the
   new cycle's books to `data/paper_state.json` every day.
+- WP-014 (2026-07-21, ADR-039): operational safety net — webhook alert
+  on any non-clean daily run (`QUANTOS_ALERT_URL`), dated daily state
+  backups with 30-day rotation (`QUANTOS_BACKUP_DIR`, default
+  `D:\QuantOS_Backups`), and a "QuantOS Daily Watchdog" scheduled task
+  (weekdays 16:30) that alerts when the daily run never started.
+  Institutional due-diligence report filed
+  (`docs/01_audits/`, 2026-07-21); TD-017/TD-018 recorded.
+- WP-015 (2026-07-21, ADR-040): live paper state untracked + gitignored
+  (TD-016 closed) — backups are the history; clean working tree between
+  runs. 2026-07-17 PIT universe snapshot committed as evidence.
+- WP-016 (2026-07-21, ADR-041): Phase 4 slice — PositionLimitGate
+  (single name ≤ 15% NAV, SELLs exempt, fail-closed) + CompositeGate;
+  demo drills an oversized order to BLOCKED; 16 new tests (249 total).
+- WP-017 (2026-07-21, ADR-042): daily paper-equity history — every
+  completed run appends `date,total_value,cash,positions,degraded` to
+  `data/paper_equity_history.csv` (true append, last-write-wins on
+  `--force` reruns); `tools/paper_metrics.py` computes total return,
+  annualized Sharpe and max drawdown from it, making the Sept-9 gate's
+  "paper Sharpe > 1.0" computable. 10 new tests (259 total).
+- Maintenance 2026-07-21: TD-015 closed (venv rebuilt from lockfile,
+  ~205→56 packages); ADR-043 amends ADR-022/023 (metrics by cited
+  ported formula, MLflow rejected); TD-012 closed (per-file inventory
+  classification, Platform Code bucket).
+- WP-018 (2026-07-21, ADR-044, operator-approved): bhavcopy-primary
+  data architecture — `quantos_core/data/bhavcopy.py` (UDiFF parser,
+  fail-closed on format change/mixed dates/dup symbols/bad closes,
+  golden-pinned to the real published file) + `fetch_bhavcopy_zip`
+  thin shell; `quantos_core/utils/trading_calendar.py` over
+  exchange-calendars XBOM; `tools/fetch_bhavcopy.py` immutable raw
+  archive under `data/bhavcopy/` (live-verified: 2026-07-21 session,
+  2,685 equity rows). yfinance demoted to quarantined cross-check for
+  all new code; frozen daily loop untouched until cutover. 20 new
+  tests (282 total); lockfile extended by canonical-venv freeze.
+- WP-019/020/021 (2026-07-22, ADR-045): Phase 2 completed —
+  corporate-action adjustment from NSE's official Bc records (PR
+  bundle, same cookie-free host; BONUS/FVSPLT/FVCONS computed exactly,
+  rights/demergers halt by design), fail-closed `validate_close_frame`
+  quality gate (calendar coverage, dense positive closes, ±35% band),
+  and `BhavcopyPriceProvider` serving adjusted validated closes from
+  the raw archives behind the frozen port. Archives backfilled
+  2025-06-02 → 2026-07-21 (280 sessions, bhavcopy + PR, ~200 MB,
+  gitignored, regenerable) and live-verified across HDFCBANK's
+  2025-08-26 1:1 bonus. ADR-045 records the disproven
+  UDiFF-prev-close hypothesis. 51 new tests (333 total).
 
 ## In progress / next
 

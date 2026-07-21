@@ -29,3 +29,20 @@ data/demo/
 data/risk.db
 data/daily_run.log
 data/shadow/
+# Immutable raw archives (WP-018/019, ADR-044/045) — regenerable from NSE's public archive
+data/bhavcopy/
+data/nse_pr/
+
+# Live paper-trading state — mutated daily by the scheduled task; history
+# and durability live in the WP-014 dated backups, not git (ADR-040)
+data/paper_state.json
+data/paper_trades.csv
+data/paper_equity_history.csv
+
+# AI-session scaffolding, not platform source (ADR-040)
+.claude/
+LOOP.md
+STATE.md
+loop-budget.md
+loop-constraints.md
+loop-run-log.md

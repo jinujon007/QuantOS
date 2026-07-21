@@ -11,6 +11,7 @@ readme = "README.md"
 # III/Packaging: "a clean checkout must be reproducible from the lockfile
 # alone... no undocumented manual step").
 dependencies = [
+    "exchange-calendars==4.13.2",
     "fastapi==0.136.3",
     "numpy==2.4.6",
     "pandas==3.0.3",

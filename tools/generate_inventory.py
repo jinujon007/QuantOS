@@ -39,10 +39,10 @@ REPO_META_NAMES = {".gitignore", ".gitattributes", ".editorconfig", "CODEOWNERS"
 # enumerating every filename, since new tests/tools files are expected to
 # keep being added and shouldn't require updating this list each time.
 ENGINEERING_DIR_PREFIXES = {"tests/": "tests", "tools/": "tooling", ".github/": "repo_meta"}
-# Empty quantos_core/ + top-level module skeleton (ADR-031). Everything
-# under these prefixes is a Phase 0/pre-Phase-1 placeholder — __init__.py
-# docstrings and .gitkeep files, zero implementation. One bucket, not one
-# per module, since there's nothing to distinguish yet.
+# Module skeleton prefixes (ADR-031). Since WP-001+ these hold real
+# implementation too, so classification is per-file (TD-012): __init__.py
+# and .gitkeep are scaffold placeholders; anything else is platform code.
+SCAFFOLD_STUB_NAMES = {"__init__.py", ".gitkeep"}
 SCAFFOLD_DIR_PREFIXES = (
     "quantos_core/",
     "services/",
@@ -75,7 +75,7 @@ def classify(path: str) -> str:
         if path.startswith(prefix):
             return bucket
     if path.startswith(SCAFFOLD_DIR_PREFIXES):
-        return "scaffold"
+        return "scaffold" if name in SCAFFOLD_STUB_NAMES else "platform"
     if suffix in NOTEBOOK_SUFFIXES:
         return "notebooks"
     if suffix in CONFIG_SUFFIXES or name in CONFIG_NAMES:
@@ -127,10 +127,16 @@ def main() -> None:
         ),
         ("repo_meta", "Repo Metadata", "Git/editor/CI configuration — not application code or data."),
         (
+            "platform",
+            "Platform Code",
+            "Implemented quantos_core/ modules and platform artifacts (strategy registry, api, "
+            "services) — real, tested code landed by WP-001 onward.",
+        ),
+        (
             "scaffold",
-            "Module Scaffold (empty)",
-            "quantos_core/ + top-level module skeleton, per ADR-031 — __init__.py docstrings and "
-            ".gitkeep only, zero implementation, nothing migrated from the frozen scripts.",
+            "Module Scaffold (placeholders)",
+            "Remaining skeleton per ADR-031 — __init__.py docstrings and .gitkeep files only; "
+            "implemented files in the same directories are listed under Platform Code (TD-012).",
         ),
         ("other_python", "Other Python", "Python files not classified above — review needed."),
         ("other", "Other / Unclassified", "Everything else — review needed."),
