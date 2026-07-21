@@ -1,7 +1,7 @@
 # Status
 
-**Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013)
-**Last work package:** WP-013 — paper.run_cycle + shadow cutover harness (2026-07-15, ADR-038)
+**Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013) · Phase 7 safety-net slice (WP-014)
+**Last work package:** WP-014 — operational safety net: alert + state backup + missed-run watchdog (2026-07-21, ADR-039)
 **Business phase (EXECUTION_PLAN.md vocabulary):** Prospective Validation — paper trading, 0/13 weekly rebalances logged
 
 ## What's done
@@ -37,6 +37,13 @@
   over injected snapshots + the shadow harness
   (`tools/run_paper_cycle.py`, daily via `daily_run.ps1`) comparing the
   new cycle's books to `data/paper_state.json` every day.
+- WP-014 (2026-07-21, ADR-039): operational safety net — webhook alert
+  on any non-clean daily run (`QUANTOS_ALERT_URL`), dated daily state
+  backups with 30-day rotation (`QUANTOS_BACKUP_DIR`, default
+  `D:\QuantOS_Backups`), and a "QuantOS Daily Watchdog" scheduled task
+  (weekdays 16:30) that alerts when the daily run never started.
+  Institutional due-diligence report filed
+  (`docs/01_audits/`, 2026-07-21); TD-017/TD-018 recorded.
 
 ## In progress / next
 

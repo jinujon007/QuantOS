@@ -29,12 +29,23 @@ if (-not (Test-Path $python)) {
     exit 1
 }
 
+# Non-OK steps collected here feed the end-of-run alert (WP-014, ADR-039).
+$script:problems = @()
+
 function RunStep([string]$label, [string[]]$cmdArgs) {
     # Pipe through PowerShell strings so the log stays one encoding
     # (PS 5.1's native *>> writes interleaved UTF-16 — unreadable).
     & $python @cmdArgs 2>&1 | ForEach-Object { "$_" } | Add-Content -Path $log -Encoding UTF8
-    if ($LASTEXITCODE -eq 2) { Log "$label HALTED (kill switch engaged)" }
-    elseif ($LASTEXITCODE -ne 0) { Log "$label FAILED (exit $LASTEXITCODE)" }
+    if ($LASTEXITCODE -eq 2) { Log "$label HALTED (kill switch engaged)"; $script:problems += "$label HALTED" }
+    elseif ($LASTEXITCODE -ne 0) { Log "$label FAILED (exit $LASTEXITCODE)"; $script:problems += "$label FAILED (exit $LASTEXITCODE)" }
+    else { Log "$label OK" }
+}
+
+function PsStep([string]$label, [string]$scriptPath) {
+    # Same contract as RunStep, for PowerShell tool scripts (they signal
+    # via exit codes just like the Python steps).
+    & $scriptPath 2>&1 | ForEach-Object { "$_" } | Add-Content -Path $log -Encoding UTF8
+    if ($LASTEXITCODE -ne 0) { Log "$label FAILED (exit $LASTEXITCODE)"; $script:problems += "$label FAILED" }
     else { Log "$label OK" }
 }
 
@@ -63,3 +74,19 @@ if ($dow -in @("Friday", "Saturday", "Sunday")) {
 # marker and still surfaces (DEGRADED) on the next rebuild.
 Log "=== daily run end ==="
 RunStep "console rebuild" @("tools\build_dashboard.py")
+
+# State backup after everything else, so it captures today's post-run
+# state (WP-014, ADR-039). A backup failure marks the day DEGRADED on
+# the console tile and joins the alert below.
+PsStep "state backup" (Join-Path $projectDir "tools\backup_state.ps1")
+
+# One alert per non-clean run — push, not pull: a silent broken day cost
+# a month once (PRD §2); the console tile only helps if someone opens it.
+if ($script:problems.Count -gt 0) {
+    $summary = "Daily run $((Get-Date -Format 'yyyy-MM-dd')) needs attention: " + ($script:problems -join "; ") + ". See data\daily_run.log."
+    $alertOutput = & (Join-Path $projectDir "tools\send_alert.ps1") -Message $summary -Title "QuantOS daily run"
+    "$alertOutput" | Add-Content -Path $log -Encoding UTF8
+    if ($LASTEXITCODE -eq 3) { Log "alert dispatch SKIPPED (QUANTOS_ALERT_URL unset)" }
+    elseif ($LASTEXITCODE -ne 0) { Log "alert dispatch FAILED (exit $LASTEXITCODE)" }
+    else { Log "alert dispatch OK" }
+}
