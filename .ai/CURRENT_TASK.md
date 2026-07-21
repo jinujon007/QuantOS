@@ -40,7 +40,12 @@ PROJECT_STATE synchronized.
 all gates re-verified). **ADR-043 filed** — amends stale ADR-022/023
 (metrics = ported cited formulas, not empyrical dep; MLflow rejected,
 native run-manifest at Phase 5); DD "revisit before Phase 5" closed.
-Next: TD-013 residue (Phase 6), TD-012 (inventory classifier).
+**TD-012 closed** (per-file inventory classification, Platform Code
+bucket). **ADR-044 PROPOSED** — bhavcopy-primary data architecture,
+yfinance quarantine, XNSE calendar (DD M-6): needs operator approval
+before the Phase 2 fetch-adapter WP can start. Remaining open debt is
+phase-gated (TD-013 Phase 6, TD-014/017 Momentum v1.1 boundary,
+TD-018 supersession at cutover).
 
 ## Operator queue (code cannot do these)
 
