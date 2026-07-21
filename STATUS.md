@@ -47,6 +47,9 @@
 - WP-015 (2026-07-21, ADR-040): live paper state untracked + gitignored
   (TD-016 closed) — backups are the history; clean working tree between
   runs. 2026-07-17 PIT universe snapshot committed as evidence.
+- WP-016 (2026-07-21, ADR-041): Phase 4 slice — PositionLimitGate
+  (single name ≤ 15% NAV, SELLs exempt, fail-closed) + CompositeGate;
+  demo drills an oversized order to BLOCKED; 16 new tests (249 total).
 
 ## In progress / next
 

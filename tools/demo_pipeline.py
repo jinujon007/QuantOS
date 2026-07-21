@@ -30,7 +30,13 @@ from quantos_core.config import load_config  # noqa: E402
 from quantos_core.data import CsvCachePriceProvider, SqliteUniverseStore  # noqa: E402
 from quantos_core.execution import ExecutionBlockedError, ExecutionEngine, OrderJournalEntry  # noqa: E402
 from quantos_core.factors import is_uptrend, uptrend_series  # noqa: E402
-from quantos_core.risk import KillSwitch, KillSwitchGate, KillSwitchState  # noqa: E402
+from quantos_core.risk import (  # noqa: E402
+    CompositeGate,
+    KillSwitch,
+    KillSwitchGate,
+    KillSwitchState,
+    PositionLimitGate,
+)
 from quantos_core.storage import SqliteRepository  # noqa: E402
 from quantos_core.strategies import MomentumV1, StrategyContext, load_momentum_params  # noqa: E402
 
@@ -113,15 +119,31 @@ def main() -> int:
             f"  {rank:2d}. {ticker:<12} weight {target.weights[ticker] * 100:4.0f}%   close {last_close[ticker]:10.2f}"
         )
 
-    banner("5. RISK -- persisted kill switch + pre-trade gate (ADR-009)")
+    banner("5. RISK -- persisted kill switch + composed pre-trade gates (ADR-009/041)")
     kill_switch = KillSwitch(SqliteRepository(DEMO_DIR / "risk.db", "kill_switch", KillSwitchState))
     kill_switch.release("demo start")
-    gate = KillSwitchGate(kill_switch)
     print(f"  kill switch engaged: {kill_switch.is_engaged()}  (state survives restarts; unreadable = BLOCK)")
+    print("  position limit: single name capped at 15% of NAV (Part V default, WP-016)")
 
     banner(f"6. EXECUTION -- the strategy's {BULL_DATE.isoformat()} weights through the gated engine (paper broker)")
     market = {symbol: float(last_close[symbol]) for symbol in top}
     broker = PaperBrokerAdapter(market, cash=CAPITAL)
+
+    class PaperBook:
+        """BookView over the live paper broker: NAV and per-name rupee
+        exposure valued at the replay's close prices."""
+
+        def nav(self) -> float:
+            held = broker.holdings()
+            return broker.available_cash() + sum(qty * market[t] for t, qty in held.items())
+
+        def exposure(self, ticker: str) -> float:
+            return broker.holdings().get(ticker, 0) * market.get(ticker, 0.0)
+
+    # Composed stack, first breach blocks: halt control, then limits.
+    # 0.15 is the Part V policy default, injected here at the composition
+    # root (ADR-025/041) -- config file layering arrives with WP-006.
+    gate = CompositeGate([KillSwitchGate(kill_switch), PositionLimitGate(PaperBook(), 0.15)])
     journal: SqliteRepository[OrderJournalEntry] = SqliteRepository(
         DEMO_DIR / "journal.db", "order_journal", OrderJournalEntry
     )
@@ -159,6 +181,17 @@ def main() -> int:
     except ExecutionBlockedError as exc:
         print(f"  Order BLOCKED as designed: {exc}")
     kill_switch.release("drill complete")
+
+    banner("7b. POSITION-LIMIT DRILL -- one name capped at 15% of NAV (WP-016)")
+    price = market[top[0]]
+    oversized_qty = int(CAPITAL * 0.20 // price) or 1  # ~20% of NAV in one name
+    oversized = LimitOrder(ticker=top[0], side=OrderSide.BUY, quantity=oversized_qty, limit_price=to_tick_up(price))
+    try:
+        engine.execute(oversized)
+        print("  !! OVERSIZED ORDER WENT THROUGH -- THIS WOULD BE A BUG")
+        return 1
+    except ExecutionBlockedError as exc:
+        print(f"  Order BLOCKED as designed: {exc}")
 
     banner("8. AUDIT TRAIL -- every attempt journaled, incl. the blocked one")
     entries = journal.query({"run_id": run_id})
