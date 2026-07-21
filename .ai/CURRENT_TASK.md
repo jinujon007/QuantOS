@@ -36,8 +36,9 @@ PROJECT_STATE synchronized.
 
 ## Next work package (recommended)
 
-**WP-017 done.** Next: TD-015 (venv rebuild from lockfile), TD-013
-residue (Phase 6), ADR-022/023 revisit (before Phase 5).
+**WP-017 done. TD-015 closed** (venv rebuilt from lockfile, 56 pkgs,
+all gates re-verified). Next: ADR-022/023 revisit (before Phase 5),
+TD-013 residue (Phase 6).
 
 ## Operator queue (code cannot do these)
 

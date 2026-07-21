@@ -90,8 +90,8 @@ metrics:
 open_items:
   risks_total: 5
   risks_mitigated: 1
-  tech_debt_total: 13
-  tech_debt_resolved: 2  # TD-009 (ADR-031), TD-010 (WP-005); TD-013 added (pre-live hardening backlog, 2026-07-14 review)
+  tech_debt_total: 18
+  tech_debt_resolved: 6  # TD-007, TD-009..011, TD-016 (ADR-040), TD-015 (2026-07-21 venv rebuild from lockfile)
 
 repository:
   default_branch: main
