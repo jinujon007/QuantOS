@@ -28,10 +28,11 @@ modules:
     status: partial  # WP-003: Repository[T] port + Entity + SqliteRepository; no domain aggregates, no Parquet
     adapters: [sqlite]
   utils:
-    status: partial  # WP-004: structured JSON-lines logging; Clock/calendar helpers arrive with later phases
+    status: partial  # WP-004 structured JSON-lines logging; WP-018 NSE session helpers (exchange-calendars XBOM, ADR-044)
   data:
-    status: partial  # WP-007: UniverseProvider/PriceProvider ports, SqliteUniverseStore (PIT), CsvCachePriceProvider
+    status: partial  # WP-007 ports/PIT store/CSV provider; WP-018 bhavcopy adapter (ADR-044, bhavcopy-primary, yfinance quarantined)
     pit_universe_snapshots_since: "2026-07-14"
+    bhavcopy_raw_archive_since: "2026-07-21"  # data/bhavcopy/, immutable, gitignored (regenerable from NSE archive)
   brokers:
     status: partial  # WP-008/ADR-034: ports + Paper/Zerodha/Angel adapters; reconciliation+heartbeats = Phase 6/8
     adapters: [paper, zerodha_kite, angel_smartapi]
@@ -56,10 +57,10 @@ operator_console:
   adr: ADR-035  # static read-only precursor to Phase 9; browser-verified 2026-07-14
 
 last_completed_work_package:
-  id: WP-017
-  name: Daily Paper-Equity History + Metrics (Sharpe computable)
+  id: WP-018
+  name: Bhavcopy-Primary Fetch Adapter + NSE Trading Calendar
   date: "2026-07-21"
-  phase: ops-slice  # ADR-042; WP-015 = ADR-040, WP-016 = ADR-041 (same day)
+  phase: 2  # ADR-044 (operator-approved); same day: WP-017 = ADR-042, ADR-043, TD-012/015 closed
 
 ci_gates:
   legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
@@ -85,7 +86,7 @@ governing_documents:
 metrics:
   digital_readiness_score: "61/100"  # CONTEXT.md DRS re-score 2026-07-13; independent DD 2026-07-21 concurs
   test_coverage_pct: 27              # quantos_core real code at 100%; repo total incl. legacy scripts
-  test_count: 259                    # verified 2026-07-21 post-WP-017 (offline suite)
+  test_count: 282                    # verified 2026-07-21 post-WP-018 (offline suite)
 
 open_items:
   risks_total: 5

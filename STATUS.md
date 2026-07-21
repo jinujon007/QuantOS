@@ -1,7 +1,7 @@
 # Status
 
 **Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013) · Phase 7 safety-net slice (WP-014)
-**Last work package:** WP-017 — daily paper-equity history capture + metrics tool (2026-07-21, ADR-042)
+**Last work package:** WP-018 — bhavcopy-primary fetch adapter + NSE trading calendar (2026-07-21, ADR-044)
 **Business phase (EXECUTION_PLAN.md vocabulary):** Prospective Validation — paper trading, 0/13 weekly rebalances logged
 
 ## What's done
@@ -56,6 +56,20 @@
   `--force` reruns); `tools/paper_metrics.py` computes total return,
   annualized Sharpe and max drawdown from it, making the Sept-9 gate's
   "paper Sharpe > 1.0" computable. 10 new tests (259 total).
+- Maintenance 2026-07-21: TD-015 closed (venv rebuilt from lockfile,
+  ~205→56 packages); ADR-043 amends ADR-022/023 (metrics by cited
+  ported formula, MLflow rejected); TD-012 closed (per-file inventory
+  classification, Platform Code bucket).
+- WP-018 (2026-07-21, ADR-044, operator-approved): bhavcopy-primary
+  data architecture — `quantos_core/data/bhavcopy.py` (UDiFF parser,
+  fail-closed on format change/mixed dates/dup symbols/bad closes,
+  golden-pinned to the real published file) + `fetch_bhavcopy_zip`
+  thin shell; `quantos_core/utils/trading_calendar.py` over
+  exchange-calendars XBOM; `tools/fetch_bhavcopy.py` immutable raw
+  archive under `data/bhavcopy/` (live-verified: 2026-07-21 session,
+  2,685 equity rows). yfinance demoted to quarantined cross-check for
+  all new code; frozen daily loop untouched until cutover. 20 new
+  tests (282 total); lockfile extended by canonical-venv freeze.
 
 ## In progress / next
 

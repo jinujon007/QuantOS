@@ -2,11 +2,11 @@
 type: adr
 number: 044
 date: 2026-07-21
-status: proposed  # operator approval required — commits external data dependencies + live-time cost
+status: accepted  # operator approved 2026-07-21 ("do it"), same day as proposal
 supersedes: none
 ---
 
-# ADR-044 (PROPOSED) — Bhavcopy-Primary EOD Data, yfinance Quarantined
+# ADR-044 — Bhavcopy-Primary EOD Data, yfinance Quarantined
 
 ## Decision (proposed)
 
@@ -32,13 +32,15 @@ Phase 2's remaining fetch-adapter scope is implemented as:
    trading calendar — closes the hand-maintained-holiday-table
    problem with a maintained Apache-2.0 dependency.
 
-## Why proposed, not accepted
+## Approval
 
-This ADR commits new external surfaces an autonomous session should
-not self-approve: a scraping relationship with NSE's endpoints
-(operational + ToS posture), a future paid data plan, and a new
-runtime dependency. The engineering direction is fully evidenced
-(DD §§9.1–9.3, M-6); the approval is the operator's.
+Filed as proposed (external data surfaces + future paid plan are the
+operator's call, not an autonomous session's); operator approved
+2026-07-21 same-day. **Acceptance correction:** exchange-calendars has
+no ``XNSE`` calendar — the Indian equity calendar is registered as
+``XBOM`` (NSE/BSE share the trading-holiday calendar); item 4 is
+implemented with XBOM (v4.13.2, verified: 2026-07-20 session, Sundays
+and Republic Day 2026 non-sessions).
 
 ## Consequences (when accepted)
 

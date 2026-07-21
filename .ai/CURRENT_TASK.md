@@ -41,11 +41,18 @@ all gates re-verified). **ADR-043 filed** — amends stale ADR-022/023
 (metrics = ported cited formulas, not empyrical dep; MLflow rejected,
 native run-manifest at Phase 5); DD "revisit before Phase 5" closed.
 **TD-012 closed** (per-file inventory classification, Platform Code
-bucket). **ADR-044 PROPOSED** — bhavcopy-primary data architecture,
-yfinance quarantine, XNSE calendar (DD M-6): needs operator approval
-before the Phase 2 fetch-adapter WP can start. Remaining open debt is
-phase-gated (TD-013 Phase 6, TD-014/017 Momentum v1.1 boundary,
-TD-018 supersession at cutover).
+bucket). **ADR-044 ACCEPTED (operator: "do it") and WP-018 SHIPPED** —
+`quantos_core/data/bhavcopy.py` (UDiFF parser golden-pinned to the
+real published file, fail-closed on format surprises) +
+`quantos_core/utils/trading_calendar.py` (exchange-calendars **XBOM**
+— ADR-044's "XNSE" name doesn't exist, correction recorded) +
+`tools/fetch_bhavcopy.py` immutable raw archive (`data/bhavcopy/`,
+gitignored, live-verified 2026-07-21: 2,685 equity rows). Lockfile
+extended by freezing the verified canonical venv (no transitive
+drift). 282 tests. Next Phase 2 WPs: corporate actions, quality
+validators, bhavcopy-backed PriceProvider over the raw archive.
+Remaining open debt is phase-gated (TD-013 Phase 6, TD-014/017
+Momentum v1.1 boundary, TD-018 supersession at cutover).
 
 ## Operator queue (code cannot do these)
 
