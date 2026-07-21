@@ -44,6 +44,9 @@
   (weekdays 16:30) that alerts when the daily run never started.
   Institutional due-diligence report filed
   (`docs/01_audits/`, 2026-07-21); TD-017/TD-018 recorded.
+- WP-015 (2026-07-21, ADR-040): live paper state untracked + gitignored
+  (TD-016 closed) — backups are the history; clean working tree between
+  runs. 2026-07-17 PIT universe snapshot committed as evidence.
 
 ## In progress / next
 
