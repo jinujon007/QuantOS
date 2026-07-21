@@ -37,8 +37,10 @@ PROJECT_STATE synchronized.
 ## Next work package (recommended)
 
 **WP-017 done. TD-015 closed** (venv rebuilt from lockfile, 56 pkgs,
-all gates re-verified). Next: ADR-022/023 revisit (before Phase 5),
-TD-013 residue (Phase 6).
+all gates re-verified). **ADR-043 filed** — amends stale ADR-022/023
+(metrics = ported cited formulas, not empyrical dep; MLflow rejected,
+native run-manifest at Phase 5); DD "revisit before Phase 5" closed.
+Next: TD-013 residue (Phase 6), TD-012 (inventory classifier).
 
 ## Operator queue (code cannot do these)
 

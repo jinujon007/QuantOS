@@ -45,7 +45,13 @@ class Metrics:
 
 
 def compute_metrics(values: pd.Series) -> Metrics:
-    """Metrics over an ordered equity series (one value per trading day)."""
+    """Metrics over an ordered equity series (one value per trading day).
+
+    Formulas per empyrical's standard definitions (ADR-043: cite the
+    math, skip the maintenance-mode dependency): annualized Sharpe =
+    mean(daily returns) / std(daily returns, ddof=1) * sqrt(252), rf=0;
+    max drawdown = min(value / running peak - 1).
+    """
     returns = values.pct_change().dropna()
     std = float(returns.std())
     sharpe = float(returns.mean()) / std * TRADING_DAYS_PER_YEAR**0.5 if std > 0 else None
