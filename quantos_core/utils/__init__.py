@@ -8,11 +8,12 @@ The six frozen scripts are untouched (ADR-003, strangler-fig).
 """
 
 from quantos_core.utils.logging import JsonLineFormatter, get_logger
-from quantos_core.utils.trading_calendar import is_trading_session, most_recent_session
+from quantos_core.utils.trading_calendar import is_trading_session, most_recent_session, sessions_between
 
 __all__ = [
     "JsonLineFormatter",
     "get_logger",
     "is_trading_session",
     "most_recent_session",
+    "sessions_between",
 ]

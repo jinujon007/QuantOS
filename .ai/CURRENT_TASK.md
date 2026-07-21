@@ -1,9 +1,33 @@
 # Current Task
 
-**Latest session 2026-07-21 — due-diligence audit + WP-014/015/016/017:
-complete.** Full log: `docs/00_governance/(AI) Program Log - 2026-07-21.md`.
-All on branch `docs/institutional-dd-2026-07-21` (PR #1, awaiting
-operator merge).
+**Latest session 2026-07-22 — Phase 2 completed (WP-019/020/021,
+ADR-045).** Full log: `docs/00_governance/(AI) Program Log -
+2026-07-22.md`. Previous session (2026-07-21): DD audit +
+WP-014..018 — see `(AI) Program Log - 2026-07-21.md`. All on branch
+`docs/institutional-dd-2026-07-21` (PR #1, awaiting operator merge).
+
+## Phase 2 close-out (2026-07-22)
+
+- **WP-019 (ADR-045)**: corporate-action adjustment from NSE's
+  official Bc records (PR bundle, same cookie-free archives host).
+  BONUS/FVSPLT/FVCONS computed exactly; dividends price-neutral;
+  rights/demergers deliberately halt via the quality band instead of
+  being guessed. First design (UDiFF prev-close ratio) **disproven
+  against the real archive** (HDFCBANK 1:1 bonus ex 2025-08-26
+  published raw) and replaced same session — recorded in ADR-045.
+- **WP-020 (ADR-045)**: `validate_close_frame` fail-closed quality
+  gate — exact XBOM calendar coverage, dense positive closes, ±35%
+  single-session band (tunable). `DataQualityError(DataFetchError)`.
+- **WP-021 (ADR-045)**: `BhavcopyPriceProvider` — adjusted, validated
+  closes from `data/bhavcopy/` + `data/nse_pr/` behind the frozen
+  `PriceProvider` port; archive gaps and uncomputable-action quality
+  failures name their cause. Two-file range-mode backfill in
+  `tools/fetch_bhavcopy.py`; archives cover 2025-06-02 → present
+  (~200 MB, gitignored, regenerable). Live-verified across the
+  HDFCBANK bonus. Adversarial review: 7 findings fixed + test-pinned (ADR-045 hardening section); known halt: TVSMOTOR NCRPS bonus ex 2025-08-25 (uncomputable, operator item). 341 tests.
+- **Remaining for Phase 6 cutover (named in ADR-045):** indices
+  (regime) adapter; shadow-harness quantification of the
+  price-return vs total-return divergence.
 
 - **WP-017 (ADR-042)**: daily paper-equity history — every completed
   run appends `date,total_value,cash,positions,degraded` to
@@ -36,23 +60,15 @@ PROJECT_STATE synchronized.
 
 ## Next work package (recommended)
 
-**WP-017 done. TD-015 closed** (venv rebuilt from lockfile, 56 pkgs,
-all gates re-verified). **ADR-043 filed** — amends stale ADR-022/023
-(metrics = ported cited formulas, not empyrical dep; MLflow rejected,
-native run-manifest at Phase 5); DD "revisit before Phase 5" closed.
-**TD-012 closed** (per-file inventory classification, Platform Code
-bucket). **ADR-044 ACCEPTED (operator: "do it") and WP-018 SHIPPED** —
-`quantos_core/data/bhavcopy.py` (UDiFF parser golden-pinned to the
-real published file, fail-closed on format surprises) +
-`quantos_core/utils/trading_calendar.py` (exchange-calendars **XBOM**
-— ADR-044's "XNSE" name doesn't exist, correction recorded) +
-`tools/fetch_bhavcopy.py` immutable raw archive (`data/bhavcopy/`,
-gitignored, live-verified 2026-07-21: 2,685 equity rows). Lockfile
-extended by freezing the verified canonical venv (no transitive
-drift). 282 tests. Next Phase 2 WPs: corporate actions, quality
-validators, bhavcopy-backed PriceProvider over the raw archive.
-Remaining open debt is phase-gated (TD-013 Phase 6, TD-014/017
-Momentum v1.1 boundary, TD-018 supersession at cutover).
+**Phase 2 is code-complete** (accepted limits: no pre-2026 PIT
+universe history; price-return series; indices adapter deferred to
+Phase 6 cutover prerequisites). Recommended next: Phase 3
+continuation (migrate the next strategies from the sibling suite onto
+the `Strategy` port) or Phase 4 risk-engine expansion (sector
+exposure gate, drawdown monitor per Constitution Part V). WP-006
+(layered configuration) remains reserved. Remaining open debt is
+phase-gated (TD-013 Phase 6, TD-014/017 Momentum v1.1 boundary,
+TD-018 supersession at cutover).
 
 ## Operator queue (code cannot do these)
 

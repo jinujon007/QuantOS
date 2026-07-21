@@ -34,3 +34,13 @@ def most_recent_session(day: date) -> date:
     """``day`` itself when it is a session, else the nearest prior session."""
     ts = _calendar().date_to_session(day.isoformat(), direction="previous")
     return date(int(ts.year), int(ts.month), int(ts.day))
+
+
+def sessions_between(start: date, end: date) -> list[date]:
+    """All NSE sessions in ``[start, end]``, ascending. Empty when the
+    window holds no sessions; raises like the other helpers when a bound
+    is outside the calendar's finite range."""
+    if end < start:
+        return []
+    ts_range = _calendar().sessions_in_range(start.isoformat(), end.isoformat())
+    return [date(int(ts.year), int(ts.month), int(ts.day)) for ts in ts_range]

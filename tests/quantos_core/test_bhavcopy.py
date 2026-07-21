@@ -158,38 +158,111 @@ def test_most_recent_session_rolls_weekend_back_to_friday() -> None:
 # ── archive tool ─────────────────────────────────────────────────────────
 
 
-def test_tool_archives_then_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
-    calls = {"n": 0}
+def pr_stub_zip(day: date) -> bytes:
+    """Minimal PR bundle: one Bc member in the real column layout."""
+    header = "SERIES,SYMBOL,SECURITY,RECORD_DT,BC_STRT_DT,BC_END_DT,EX_DT,ND_STRT_DT,ND_END_DT,PURPOSE"
+    row = f"EQ,STUB,Stub Ltd,,,,{day.isoformat()},,,DIV - RE 1 PER SH"
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(f"Bc{day.strftime('%d%m%y')}.csv", header + "\n" + row)
+    return buffer.getvalue()
 
-    def fake_fetch(session: date, **kwargs: object) -> bytes:
-        calls["n"] += 1
+
+def tool_dirs(tmp_path: Path) -> list[str]:
+    return ["--out-dir", str(tmp_path / "bhav"), "--pr-dir", str(tmp_path / "pr")]
+
+
+def test_tool_archives_both_files_then_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    calls = {"bhav": 0, "pr": 0}
+
+    def fake_bhav(session: date, **kwargs: object) -> bytes:
+        calls["bhav"] += 1
         return golden_zip()
 
-    monkeypatch.setattr(fetch_tool, "fetch_bhavcopy_zip", fake_fetch)
-    assert fetch_tool.main(["--date", "2026-07-20", "--out-dir", str(tmp_path)]) == 0
-    out = capsys.readouterr().out
-    assert "Archived" in out and "RELIANCE" not in out.split("equity rows")[0]
-    assert (tmp_path / MEMBER).with_suffix(".csv.zip").name  # filename derived from URL
-    archived = list(tmp_path.iterdir())
-    assert len(archived) == 1 and archived[0].name == MEMBER + ".zip"
+    def fake_pr(session: date, **kwargs: object) -> bytes:
+        calls["pr"] += 1
+        return pr_stub_zip(session)
 
-    # Second run: no re-fetch, same summary, still exit 0.
-    assert fetch_tool.main(["--date", "2026-07-20", "--out-dir", str(tmp_path)]) == 0
-    assert calls["n"] == 1, "an archived session must never be re-fetched (immutable raw store)"
+    monkeypatch.setattr(fetch_tool, "fetch_bhavcopy_zip", fake_bhav)
+    monkeypatch.setattr(fetch_tool, "fetch_pr_zip", fake_pr)
+    assert fetch_tool.main(["--date", "2026-07-20", *tool_dirs(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "Archived" in out and "corporate-action records" in out
+    bhav_files = list((tmp_path / "bhav").iterdir())
+    assert len(bhav_files) == 1 and bhav_files[0].name == MEMBER + ".zip"
+    assert [p.name for p in (tmp_path / "pr").iterdir()] == ["PR200726.zip"]
+
+    # Second run: no re-fetch of either file, still exit 0.
+    assert fetch_tool.main(["--date", "2026-07-20", *tool_dirs(tmp_path)]) == 0
+    assert calls == {"bhav": 1, "pr": 1}, "an archived session must never be re-fetched (immutable raw store)"
     assert "Already archived" in capsys.readouterr().out
 
 
 def test_tool_rejects_non_session_date(tmp_path: Path, capsys) -> None:
-    assert fetch_tool.main(["--date", "2026-07-19", "--out-dir", str(tmp_path)]) == 1
+    assert fetch_tool.main(["--date", "2026-07-19", *tool_dirs(tmp_path)]) == 1
     assert "not an NSE trading session" in capsys.readouterr().out
-    assert list(tmp_path.iterdir()) == []
+    assert not (tmp_path / "bhav").exists() and not (tmp_path / "pr").exists()
 
 
 def test_tool_detects_session_vs_content_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     monkeypatch.setattr(fetch_tool, "fetch_bhavcopy_zip", lambda session, **k: golden_zip())
+    monkeypatch.setattr(fetch_tool, "fetch_pr_zip", lambda session, **k: pr_stub_zip(session))
     # 2026-07-17 is a real session, but the (stubbed) payload is dated 07-20.
-    assert fetch_tool.main(["--date", "2026-07-17", "--out-dir", str(tmp_path)]) == 1
+    assert fetch_tool.main(["--date", "2026-07-17", *tool_dirs(tmp_path)]) == 1
     assert "archive dated 2026-07-20" in capsys.readouterr().out
+
+
+def test_tool_range_mode_walks_sessions_and_reports_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    fetched: list[date] = []
+
+    def fake_bhav(session: date, **kwargs: object) -> bytes:
+        fetched.append(session)
+        if session == date(2026, 7, 14):
+            raise DataFetchError("stub outage")
+        text = GOLDEN.read_text(encoding="utf-8").replace("2026-07-20", session.isoformat())
+        return zip_of(text)
+
+    monkeypatch.setattr(fetch_tool, "fetch_bhavcopy_zip", fake_bhav)
+    monkeypatch.setattr(fetch_tool, "fetch_pr_zip", lambda session, **k: pr_stub_zip(session))
+    monkeypatch.setattr(fetch_tool, "FETCH_DELAY_S", 0.0)
+    # Mon 13th .. Wed 15th = 3 sessions; the 14th fails, the walk continues.
+    assert fetch_tool.main(["--start", "2026-07-13", "--end", "2026-07-15", *tool_dirs(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert fetched == [date(2026, 7, 13), date(2026, 7, 14), date(2026, 7, 15)]
+    assert "2/3 sessions archived clean" in out
+    assert "MISSING 2026-07-14: stub outage" in out
+    assert len(list((tmp_path / "bhav").iterdir())) == 2
+    assert len(list((tmp_path / "pr").iterdir())) == 2
+
+    # Re-run: archived sessions are not re-fetched, only the gap is retried.
+    fetched.clear()
+    monkeypatch.setattr(
+        fetch_tool,
+        "fetch_bhavcopy_zip",
+        lambda session, **k: zip_of(GOLDEN.read_text(encoding="utf-8").replace("2026-07-20", session.isoformat())),
+    )
+    assert fetch_tool.main(["--start", "2026-07-13", "--end", "2026-07-15", *tool_dirs(tmp_path)]) == 0
+    assert "3/3 sessions archived clean" in capsys.readouterr().out
+    assert len(list((tmp_path / "bhav").iterdir())) == 3
+    assert len(list((tmp_path / "pr").iterdir())) == 3
+
+
+def test_tool_range_flags_must_come_together(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit):
+        fetch_tool.main(["--start", "2026-07-13", *tool_dirs(tmp_path)])
+    with pytest.raises(SystemExit):
+        fetch_tool.main(["--date", "2026-07-13", "--start", "2026-07-13", "--end", "2026-07-14"])
+
+
+def test_sessions_between_is_ascending_and_holiday_aware() -> None:
+    from quantos_core.utils import sessions_between
+
+    week = sessions_between(date(2026, 7, 13), date(2026, 7, 19))
+    assert week == [date(2026, 7, d) for d in (13, 14, 15, 16, 17)]  # Mon..Fri, weekend excluded
+    assert sessions_between(date(2026, 7, 18), date(2026, 7, 19)) == []
+    assert sessions_between(date(2026, 7, 19), date(2026, 7, 18)) == []
 
 
 def test_golden_fixture_is_verbatim_udiff() -> None:

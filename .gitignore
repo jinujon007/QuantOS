@@ -29,8 +29,9 @@ data/demo/
 data/risk.db
 data/daily_run.log
 data/shadow/
-# Immutable raw bhavcopy archive (WP-018, ADR-044) — regenerable from NSE's public archive
+# Immutable raw archives (WP-018/019, ADR-044/045) — regenerable from NSE's public archive
 data/bhavcopy/
+data/nse_pr/
 
 # Live paper-trading state — mutated daily by the scheduled task; history
 # and durability live in the WP-014 dated backups, not git (ADR-040)

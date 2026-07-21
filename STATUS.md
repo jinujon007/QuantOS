@@ -1,7 +1,7 @@
 # Status
 
-**Engineering phase:** Phase 1 closed (WP-005) · Phase 2 open (WP-007, partial) · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013) · Phase 7 safety-net slice (WP-014)
-**Last work package:** WP-018 — bhavcopy-primary fetch adapter + NSE trading calendar (2026-07-21, ADR-044)
+**Engineering phase:** Phase 1 closed (WP-005) · **Phase 2 code-complete (WP-021)** · Phase 3 open (WP-009) · Phase 5/6 slices open (WP-012/013) · Phase 7 safety-net slice (WP-014)
+**Last work package:** WP-019/020/021 — official-record corporate actions, fail-closed quality gate, bhavcopy-backed PriceProvider (2026-07-22, ADR-045)
 **Business phase (EXECUTION_PLAN.md vocabulary):** Prospective Validation — paper trading, 0/13 weekly rebalances logged
 
 ## What's done
@@ -70,6 +70,17 @@
   2,685 equity rows). yfinance demoted to quarantined cross-check for
   all new code; frozen daily loop untouched until cutover. 20 new
   tests (282 total); lockfile extended by canonical-venv freeze.
+- WP-019/020/021 (2026-07-22, ADR-045): Phase 2 completed —
+  corporate-action adjustment from NSE's official Bc records (PR
+  bundle, same cookie-free host; BONUS/FVSPLT/FVCONS computed exactly,
+  rights/demergers halt by design), fail-closed `validate_close_frame`
+  quality gate (calendar coverage, dense positive closes, ±35% band),
+  and `BhavcopyPriceProvider` serving adjusted validated closes from
+  the raw archives behind the frozen port. Archives backfilled
+  2025-06-02 → 2026-07-21 (280 sessions, bhavcopy + PR, ~200 MB,
+  gitignored, regenerable) and live-verified across HDFCBANK's
+  2025-08-26 1:1 bonus. ADR-045 records the disproven
+  UDiFF-prev-close hypothesis. 51 new tests (333 total).
 
 ## In progress / next
 

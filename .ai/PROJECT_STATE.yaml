@@ -15,9 +15,9 @@ current_phase:
   number: 2
   name: Data Platform
   scope: DataProvider port, point-in-time universe store, corporate actions, quality validation (closes F1/F9)
-  code_status: in_progress  # WP-007 opened Phase 2: ports + PIT universe store + fail-closed price provider
+  code_status: code_complete  # WP-007/018/019/020/021: ports, PIT store, bhavcopy-primary source, official-record corporate actions, quality gate, adjusted provider
   phase_1_status: fully_closed  # WP-001..005 complete (WP-006 reserved, deferred)
-  work_package_filed: false     # next: corporate actions / quality validators / fetch adapter, or WP-006
+  accepted_limits: pre-2026 PIT universe history unavailable; price-return series (ordinary dividends unadjusted); indices/regime adapter = Phase 6 cutover prerequisite
 
 modules:
   config:
@@ -30,9 +30,9 @@ modules:
   utils:
     status: partial  # WP-004 structured JSON-lines logging; WP-018 NSE session helpers (exchange-calendars XBOM, ADR-044)
   data:
-    status: partial  # WP-007 ports/PIT store/CSV provider; WP-018 bhavcopy adapter (ADR-044, bhavcopy-primary, yfinance quarantined)
+    status: phase_2_complete  # WP-007 ports/PIT store/CSV provider; WP-018 bhavcopy adapter; WP-019/020/021 corporate actions + quality gate + BhavcopyPriceProvider (ADR-045)
     pit_universe_snapshots_since: "2026-07-14"
-    bhavcopy_raw_archive_since: "2026-07-21"  # data/bhavcopy/, immutable, gitignored (regenerable from NSE archive)
+    bhavcopy_raw_archive_coverage: "2025-06-02..present"  # data/bhavcopy/ + data/nse_pr/, immutable, gitignored (regenerable from NSE archive)
   brokers:
     status: partial  # WP-008/ADR-034: ports + Paper/Zerodha/Angel adapters; reconciliation+heartbeats = Phase 6/8
     adapters: [paper, zerodha_kite, angel_smartapi]
@@ -57,14 +57,14 @@ operator_console:
   adr: ADR-035  # static read-only precursor to Phase 9; browser-verified 2026-07-14
 
 last_completed_work_package:
-  id: WP-018
-  name: Bhavcopy-Primary Fetch Adapter + NSE Trading Calendar
-  date: "2026-07-21"
-  phase: 2  # ADR-044 (operator-approved); same day: WP-017 = ADR-042, ADR-043, TD-012/015 closed
+  id: WP-021
+  name: Bhavcopy-Backed PriceProvider (with WP-019 corporate actions + WP-020 quality gate)
+  date: "2026-07-22"
+  phase: 2  # ADR-045; Phase 2 code-complete; archives backfilled 2025-06-02..2026-07-21, live-verified
 
 ci_gates:
   legacy_scripts_mypy: informational        # 7 pre-existing errors, tracked, not blocking
-  quantos_core_mypy_strict: blocking         # WP-001; now covers 22 source files
+  quantos_core_mypy_strict: blocking         # WP-001; now covers 50 source files
   quantos_core_import_smoke_test: blocking   # WP-001
   import_boundary_enforcement: blocking      # WP-005: ADR-032 matrix via tests/quantos_core/test_import_boundaries.py
 
@@ -86,7 +86,7 @@ governing_documents:
 metrics:
   digital_readiness_score: "61/100"  # CONTEXT.md DRS re-score 2026-07-13; independent DD 2026-07-21 concurs
   test_coverage_pct: 27              # quantos_core real code at 100%; repo total incl. legacy scripts
-  test_count: 282                    # verified 2026-07-21 post-WP-018 (offline suite)
+  test_count: 341                    # verified 2026-07-22 post-WP-021 + adversarial-review hardening (offline suite)
 
 open_items:
   risks_total: 5
@@ -102,4 +102,4 @@ repository:
 
 modules_scaffolded_empty: 4  # analytics, live, monitoring, validation (init-only); recount 2026-07-21 (TD-012 fix)
 
-last_updated: "2026-07-21"
+last_updated: "2026-07-22"
